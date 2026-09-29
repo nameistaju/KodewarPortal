@@ -70,47 +70,47 @@ const ApplyLeaveModal = ({open, onClose, onSuccess}) => {
     if(!open) return null
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs' onClick={onClose}>
-        <div className='relative card w-full max-w-lg animate-fade-in text-[#475569]' onClick={(e)=>e.stopPropagation()}>
+    <div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs' onClick={onClose}>
+        <div className='relative card w-full max-w-lg animate-fade-in text-neutral-800 border border-neutral-200 bg-white' onClick={(e)=>e.stopPropagation()}>
             <div className='flex items-center justify-between p-6 pb-0'>
                 <div>
-                    <h2 className='text-lg font-bold text-[#111827]'>Apply for Leave</h2>
-                    <p className='text-sm text-slate-500 mt-0.5'>Submit your leave request for approval</p>
+                    <h2 className='text-lg font-black text-black'>Apply for Leave</h2>
+                    <p className='text-sm text-neutral-500 mt-0.5 font-medium'>Submit your leave request for approval</p>
                 </div>
-                <button onClick={onClose} className='p-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600 cursor-pointer' aria-label="Close modal">
+                <button onClick={onClose} className='p-2 rounded-lg hover:bg-neutral-100 transition-colors text-neutral-400 hover:text-black cursor-pointer' aria-label="Close modal">
                      <X className="w-5 h-5" />
                 </button>
             </div>
             <form onSubmit={handleSubmit} className='p-6 space-y-5'>
                  <div>
-                    <label htmlFor="leaveType" className='flex items-center gap-2 text-sm font-semibold text-[#475569] mb-2'><FileText className="w-4 h-4 text-[#2EA8FF]"/> Leave Type</label>
-                    <select id="leaveType" name="leaveType" required>
+                    <label htmlFor="leaveType" className='flex items-center gap-2 text-sm font-bold text-black mb-2'><FileText className="w-4 h-4 text-black"/> Leave Type</label>
+                    <select id="leaveType" name="leaveType" required className="border-neutral-200 focus:border-black">
                         <option value="SICK">Sick Leave</option>
                         <option value="CASUAL">Casual Leave</option>
                         <option value="ANNUAL">Annual Leave</option>
                     </select>
                  </div>
                  <div>
-                    <span className='flex items-center gap-2 text-sm font-semibold text-[#475569] mb-2'><CalendarDays className="w-4 h-4 text-[#2EA8FF]"/> Duration</span>
+                    <span className='flex items-center gap-2 text-sm font-bold text-black mb-2'><CalendarDays className="w-4 h-4 text-black"/> Duration</span>
                     <div className='grid grid-cols-2 gap-4'>
                         <div>
                             <label htmlFor="startDate" className="sr-only">Start Date</label>
-                            <input type="date" id="startDate" name="startDate" required />
+                            <input type="date" id="startDate" name="startDate" required className="border-neutral-200 focus:border-black" />
                         </div>
                         <div>
                             <label htmlFor="endDate" className="sr-only">End Date</label>
-                            <input type="date" id="endDate" name="endDate" required />
+                            <input type="date" id="endDate" name="endDate" required className="border-neutral-200 focus:border-black" />
                         </div>
                     </div>
                  </div>
                  <div>
-                    <label htmlFor="leaveReason" className='text-sm font-semibold text-[#475569] mb-2 block'>Reason</label>
-                    <textarea id="leaveReason" name="reason" required rows={3} className="resize-none" placeholder="Briefly describe why you need this leave..." />
+                    <label htmlFor="leaveReason" className='text-sm font-bold text-black mb-2 block'>Reason</label>
+                    <textarea id="leaveReason" name="reason" required rows={3} className="resize-none border-neutral-200 focus:border-black" placeholder="Briefly describe why you need this leave..." />
                  </div>
                  <div className="flex gap-3 pt-2">
-                    <button onClick={onClose} type='button' className="btn-secondary flex-1">Cancel</button>
-                    <button disabled={loading} type='submit' className="btn-primary flex-1 flex items-center justify-center gap-2">
-                          {loading ? <Loader2 className='w-4 h-4 animate-spin'/> : <Send className="w-4 h-4"/>}
+                    <button onClick={onClose} type='button' className="btn-secondary flex-1 font-bold">Cancel</button>
+                    <button disabled={loading} type='submit' className="btn-primary flex-1 flex items-center justify-center gap-2 font-bold cursor-pointer">
+                          {loading ? <Loader2 className='w-4 h-4 animate-spin text-white'/> : <Send className="w-4 h-4 text-white"/>}
                           {loading ? "Submitting..." : "Submit"}
                     </button>
                  </div>

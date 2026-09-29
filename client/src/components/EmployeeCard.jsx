@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Pencil, RotateCcw, UserX, Mail, Phone, Calendar, 
-  ShieldAlert, ShieldCheck, Clock, MoreVertical, Shield
+  Clock, MoreVertical
 } from 'lucide-react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
@@ -32,16 +32,16 @@ const EmployeeCard = ({ employee, onDelete, onEdit }) => {
   });
 
   return (
-    <div className={`group relative overflow-hidden card p-6 shadow-sm transition-all duration-300 flex flex-col justify-between h-full border hover:-translate-y-0.5 hover:shadow-xl ${
-      inactive ? 'border-rose-200 bg-rose-50/30 text-slate-500' : 'border-slate-200/80 hover:border-slate-300 hover:shadow-md'
+    <div className={`group relative overflow-hidden card p-6 shadow-sm transition-all duration-300 flex flex-col justify-between h-full border hover:-translate-y-0.5 hover:shadow-xl bg-white ${
+      inactive ? 'border-neutral-300 bg-neutral-50/50 text-neutral-500' : 'border-neutral-200 hover:border-neutral-900 hover:shadow-md'
     }`}>
       {/* Top Header Row with Status and Dropdown Actions */}
       <div className="flex items-start justify-between mb-4">
         {/* Status Badge */}
-        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border ${
+        <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider border ${
           inactive 
-            ? 'bg-rose-50 text-rose-600 border-rose-100' 
-            : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+            ? 'bg-neutral-200 text-neutral-900 border-neutral-300' 
+            : 'bg-black text-white border-neutral-900'
         }`}>
           {employee.status}
         </span>
@@ -50,7 +50,7 @@ const EmployeeCard = ({ employee, onDelete, onEdit }) => {
         <div className="relative">
           <button 
             onClick={() => setShowDropdown(!showDropdown)}
-            className="p-1 rounded-lg hover:bg-slate-100 border border-transparent hover:border-slate-200 text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
+            className="p-1 rounded-lg hover:bg-neutral-100 border border-transparent hover:border-neutral-200 text-neutral-400 hover:text-black transition-all cursor-pointer"
           >
             <MoreVertical className="w-4 h-4" />
           </button>
@@ -58,18 +58,18 @@ const EmployeeCard = ({ employee, onDelete, onEdit }) => {
           {showDropdown && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
-              <div className="absolute right-0 mt-1 w-40 bg-white border border-slate-200 shadow-xl rounded-xl p-1.5 z-20 text-xs font-semibold text-slate-700">
+              <div className="absolute right-0 mt-1 w-40 bg-white border border-neutral-200 shadow-xl rounded-xl p-1.5 z-20 text-xs font-bold text-black">
                 <button 
                   onClick={() => { onEdit(employee); setShowDropdown(false); }}
-                  className="w-full text-left px-3 py-1.8 hover:bg-slate-50 rounded-lg flex items-center gap-2 text-slate-700 cursor-pointer"
+                  className="w-full text-left px-3 py-1.8 hover:bg-neutral-100 rounded-lg flex items-center gap-2 text-black cursor-pointer"
                 >
-                  <Pencil className="w-3.5 h-3.5 text-[#2EA8FF]" />
+                  <Pencil className="w-3.5 h-3.5 text-black" />
                   Edit Profile
                 </button>
                 <button 
                   onClick={handleStatus}
-                  className={`w-full text-left px-3 py-1.8 hover:bg-slate-50 rounded-lg flex items-center gap-2 cursor-pointer ${
-                    inactive ? 'text-emerald-600 hover:text-emerald-700' : 'text-rose-600 hover:text-rose-700'
+                  className={`w-full text-left px-3 py-1.8 hover:bg-neutral-100 rounded-lg flex items-center gap-2 cursor-pointer ${
+                    inactive ? 'text-black' : 'text-neutral-700'
                   }`}
                 >
                   {inactive ? (
@@ -97,40 +97,40 @@ const EmployeeCard = ({ employee, onDelete, onEdit }) => {
           <Avatar
             employee={employee}
             size="h-[72px] w-[72px]"
-            className="border border-slate-200 shadow-md rounded-2xl ring-2 ring-slate-100 transition-transform duration-300 group-hover:scale-[1.03]"
-            fallbackClassName="text-2xl"
+            className="border border-neutral-300 shadow-md rounded-2xl ring-2 ring-neutral-100 transition-transform duration-300 group-hover:scale-[1.03]"
+            fallbackClassName="text-2xl bg-black text-white"
           />
           <span className={`absolute bottom-0 right-0 block h-3.5 w-3.5 rounded-full border-2 border-white shadow-xs ${
-            inactive ? 'bg-slate-400' : 'bg-emerald-500'
+            inactive ? 'bg-neutral-400' : 'bg-black'
           }`} />
         </div>
 
-        <h3 className="font-extrabold text-[#111827] text-base leading-tight tracking-tight">{employee.name}</h3>
-        <p className="text-[10px] text-[#64748B] font-bold uppercase mt-1 tracking-wider">{employee.department || 'Unassigned'}</p>
+        <h3 className="font-extrabold text-black text-base leading-tight tracking-tight">{employee.name}</h3>
+        <p className="text-[10px] text-neutral-500 font-extrabold uppercase mt-1 tracking-wider">{employee.department || 'Unassigned'}</p>
         
         {/* Role Badge */}
         <span className={`mt-2.5 inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-extrabold border uppercase tracking-wider ${
           employee.role === 'ADMIN' 
-            ? 'bg-blue-50 text-blue-700 border-blue-100' 
-            : 'bg-slate-50 text-slate-600 border-slate-200'
+            ? 'bg-black text-white border-neutral-900' 
+            : 'bg-neutral-100 text-neutral-800 border-neutral-300'
         }`}>
           {employee.role}
         </span>
         
-        <div className="w-full border-t border-slate-100 mt-4 pt-3.5 space-y-2 text-[11px] text-[#475569] font-medium">
+        <div className="w-full border-t border-neutral-200 mt-4 pt-3.5 space-y-2 text-[11px] text-neutral-700 font-medium">
           <div className="flex items-center gap-2">
-            <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <Mail className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
             <span className="truncate">{employee.email}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <Phone className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
             <span>{employee.phone || 'No phone'}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <Calendar className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
             <span>Joined {joinDateFormatted}</span>
           </div>
-          <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1 pt-1.5 border-t border-slate-50">
+          <div className="flex items-center gap-2 text-[10px] text-neutral-400 mt-1 pt-1.5 border-t border-neutral-100">
             <Clock className="w-3.5 h-3.5 shrink-0" />
             <span>Updated {lastActiveFormatted}</span>
           </div>

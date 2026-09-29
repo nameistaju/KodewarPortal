@@ -174,7 +174,7 @@ const Layout = () => {
 
   return (
     <EmployeeTrackingProvider enabled={role === 'EMPLOYEE'}>
-    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-sans">
+    <div className="flex h-screen bg-[#F5F5F5] overflow-hidden font-sans">
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex shrink-0">
         <Sidebar />
@@ -182,9 +182,9 @@ const Layout = () => {
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Universal Top Navbar */}
-        <header className={`${role === "EMPLOYEE" ? "hidden lg:flex" : "flex"} h-16 border-b border-slate-200/60 bg-white/70 backdrop-blur-md items-center justify-between px-6 z-20 sticky top-0 shrink-0`}>
+        <header className={`${role === "EMPLOYEE" ? "hidden lg:flex" : "flex"} h-16 border-b border-neutral-200 bg-white/80 backdrop-blur-md items-center justify-between px-6 z-20 sticky top-0 shrink-0`}>
           <div className="flex items-center gap-4 flex-1">
-            <span className="text-base font-bold text-slate-800">KODEWAR Workforce</span>
+            <span className="text-base font-black tracking-tight text-black">KODEWAR Workforce</span>
           </div>
 
           {/* Top Actions Right Side */}
@@ -192,9 +192,9 @@ const Layout = () => {
             {showFloatingButton && (
               <button
                 onClick={handleInstallApp}
-                className="hidden md:flex items-center gap-1.5 btn-secondary text-xs py-1.5 px-3 border-[#2EA8FF]/20 hover:bg-[#2EA8FF]/10 text-[#2EA8FF] font-semibold"
+                className="hidden md:flex items-center gap-1.5 btn-secondary text-xs py-1.5 px-3 border-neutral-300 hover:bg-neutral-100 text-black font-bold"
               >
-                <Download className="w-3.5 h-3.5" />
+                <Download className="w-3.5 h-3.5 text-black" />
                 Install App
               </button>
             )}
@@ -203,10 +203,10 @@ const Layout = () => {
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2.5 text-slate-600 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-200/50 relative"
+                className="p-2.5 text-neutral-700 hover:bg-neutral-100 rounded-xl transition-all border border-transparent hover:border-neutral-200 relative cursor-pointer"
               >
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
+                <Bell className="w-5 h-5 text-black" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-black ring-2 ring-white" />
               </button>
 
               {/* Notifications Dropdown Panel */}
@@ -219,20 +219,20 @@ const Layout = () => {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-2.5 w-80 bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 z-40"
+                      className="absolute right-0 mt-2.5 w-80 bg-white border border-neutral-200 shadow-2xl rounded-2xl p-4 z-40"
                     >
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-2">
-                        <h4 className="font-bold text-slate-800 text-sm">Notifications</h4>
-                        <button className="text-[11px] font-bold text-[#2EA8FF] hover:text-[#1F7AE0]">Mark all read</button>
+                      <div className="flex items-center justify-between pb-3 border-b border-neutral-200 mb-2">
+                        <h4 className="font-bold text-black text-sm">Notifications</h4>
+                        <button className="text-[11px] font-bold text-neutral-900 underline hover:text-black">Mark all read</button>
                       </div>
                       <div className="space-y-3 max-h-60 overflow-y-auto">
                         {notifications.map((n) => (
-                          <div key={n.id} className="text-xs p-2 hover:bg-slate-50 rounded-xl transition-colors text-left">
+                          <div key={n.id} className="text-xs p-2.5 hover:bg-neutral-50 rounded-xl transition-colors text-left border border-transparent hover:border-neutral-200">
                             <div className="flex justify-between items-start gap-2">
-                              <span className="font-semibold text-slate-800">{n.title}</span>
-                              <span className="text-[9px] text-slate-400 font-mono">{n.time}</span>
+                              <span className="font-bold text-neutral-900">{n.title}</span>
+                              <span className="text-[9px] text-neutral-500 font-mono">{n.time}</span>
                             </div>
-                            <p className="text-slate-500 mt-0.5 leading-relaxed">{n.desc}</p>
+                            <p className="text-neutral-600 mt-0.5 leading-relaxed">{n.desc}</p>
                           </div>
                         ))}
                       </div>
@@ -246,14 +246,14 @@ const Layout = () => {
             <div className="relative">
               <button
                 onClick={() => setShowUserDropdown(!showUserDropdown)}
-                className="flex items-center gap-2 pl-2 border-l border-slate-200/60 focus:outline-none hover:opacity-80 transition-opacity cursor-pointer text-left"
+                className="flex items-center gap-2 pl-2 border-l border-neutral-200 focus:outline-none hover:opacity-80 transition-opacity cursor-pointer text-left"
                 aria-haspopup="true"
                 aria-expanded={showUserDropdown}
               >
-                <Avatar user={user} size="w-8 h-8" rounded="rounded-lg" className="border border-slate-200 shadow-xs" fallbackClassName="bg-slate-800 text-white text-xs" />
+                <Avatar user={user} size="w-8 h-8" rounded="rounded-lg" className="border border-neutral-300 shadow-xs" fallbackClassName="bg-neutral-900 text-white text-xs" />
                 <div className="hidden sm:block text-left">
-                  <p className="text-xs font-semibold text-slate-800 leading-none">{user.name}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5 leading-none">
+                  <p className="text-xs font-bold text-black leading-none">{user.name}</p>
+                  <p className="text-[10px] text-neutral-500 mt-0.5 leading-none">
                     {role === "ADMIN" ? "Admin" : "Employee"}
                   </p>
                 </div>
@@ -268,40 +268,40 @@ const Layout = () => {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 shadow-2xl rounded-2xl p-2 z-40"
+                      className="absolute right-0 mt-2 w-56 bg-white border border-neutral-200 shadow-2xl rounded-2xl p-2 z-40"
                     >
-                      <div className="flex items-center gap-3 px-3 py-2 border-b border-slate-100 mb-1">
-                        <Avatar user={user} size="h-10 w-10" className="border border-[#2EA8FF]/30" />
+                      <div className="flex items-center gap-3 px-3 py-2 border-b border-neutral-200 mb-1">
+                        <Avatar user={user} size="h-10 w-10" className="border border-neutral-300" fallbackClassName="bg-neutral-900 text-white text-sm" />
                         <div className="min-w-0">
-                          <p className="truncate text-xs font-bold text-slate-900">{user.name}</p>
-                          <p className="text-[10px] text-slate-500">{role === "ADMIN" ? "Admin" : "Employee"}</p>
+                          <p className="truncate text-xs font-bold text-black">{user.name}</p>
+                          <p className="text-[10px] text-neutral-500">{role === "ADMIN" ? "Admin" : "Employee"}</p>
                         </div>
                       </div>
                       <Link
                         to="/settings"
                         onClick={() => setShowUserDropdown(false)}
-                        className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-colors"
+                        className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-neutral-800 hover:bg-neutral-100 hover:text-black rounded-xl transition-colors"
                       >
-                        <User className="w-4 h-4 text-[#2EA8FF]" />
+                        <User className="w-4 h-4 text-black" />
                         My Profile
                       </Link>
                       <Link
                         to="/settings"
                         onClick={() => setShowUserDropdown(false)}
-                        className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-colors"
+                        className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-neutral-800 hover:bg-neutral-100 hover:text-black rounded-xl transition-colors"
                       >
-                        <Settings className="w-4 h-4 text-slate-400" />
+                        <Settings className="w-4 h-4 text-neutral-500" />
                         Settings
                       </Link>
-                      <hr className="my-1 border-slate-100" />
+                      <hr className="my-1 border-neutral-200" />
                       <button
                         onClick={() => {
                           setShowUserDropdown(false);
                           logout();
                         }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors text-left cursor-pointer"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-neutral-900 hover:bg-neutral-100 rounded-xl transition-colors text-left cursor-pointer"
                       >
-                        <LogOut className="w-4 h-4 text-rose-500" />
+                        <LogOut className="w-4 h-4 text-neutral-700" />
                         Logout
                       </button>
                     </motion.div>
@@ -313,20 +313,20 @@ const Layout = () => {
         </header>
 
         {role === "EMPLOYEE" && (
-          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 lg:hidden">
+          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-4 lg:hidden">
             <Link to="/dashboard" className="flex min-h-12 items-center gap-2" aria-label="KODEWAR dashboard">
-              <span className="text-sm font-black tracking-tight text-[#07152E]">KODEWAR</span>
+              <span className="text-sm font-black tracking-widest text-black uppercase">KODEWAR</span>
             </Link>
             <div className="flex items-center gap-1">
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setShowNotifications((value) => !value)}
-                  className="relative flex h-12 w-12 items-center justify-center rounded-2xl text-slate-600 active:bg-slate-100"
+                  className="relative flex h-12 w-12 items-center justify-center rounded-2xl text-neutral-700 active:bg-neutral-100"
                   aria-label="Open notifications"
                 >
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
+                  <Bell className="h-5 w-5 text-black" />
+                  <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-black ring-2 ring-white" />
                 </button>
                 <AnimatePresence>
                   {showNotifications && (
@@ -337,20 +337,20 @@ const Layout = () => {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -6 }}
                         transition={{ duration: 0.15 }}
-                        className="fixed left-4 right-4 top-[68px] z-40 max-h-[60vh] overflow-y-auto rounded-[20px] border border-slate-200 bg-white p-4 shadow-2xl"
+                        className="fixed left-4 right-4 top-[68px] z-40 max-h-[60vh] overflow-y-auto rounded-[20px] border border-neutral-200 bg-white p-4 shadow-2xl"
                       >
-                        <div className="mb-2 flex items-center justify-between border-b border-slate-100 pb-3">
-                          <h2 className="text-sm font-extrabold text-slate-900">Notifications</h2>
-                          <button type="button" onClick={() => setShowNotifications(false)} className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500" aria-label="Close notifications"><X className="h-5 w-5" /></button>
+                        <div className="mb-2 flex items-center justify-between border-b border-neutral-200 pb-3">
+                          <h2 className="text-sm font-extrabold text-black">Notifications</h2>
+                          <button type="button" onClick={() => setShowNotifications(false)} className="flex h-10 w-10 items-center justify-center rounded-xl text-neutral-500" aria-label="Close notifications"><X className="h-5 w-5" /></button>
                         </div>
                         <div className="space-y-1">
                           {notifications.map((notification) => (
-                            <div key={notification.id} className="rounded-2xl p-3 text-left active:bg-slate-50">
+                            <div key={notification.id} className="rounded-2xl p-3 text-left active:bg-neutral-50 border border-transparent hover:border-neutral-200">
                               <div className="flex items-start justify-between gap-3">
-                                <p className="text-sm font-bold text-slate-800">{notification.title}</p>
-                                <span className="shrink-0 text-[10px] text-slate-400">{notification.time}</span>
+                                <p className="text-sm font-bold text-black">{notification.title}</p>
+                                <span className="shrink-0 text-[10px] text-neutral-500">{notification.time}</span>
                               </div>
-                              <p className="mt-1 text-xs leading-5 text-slate-500">{notification.desc}</p>
+                              <p className="mt-1 text-xs leading-5 text-neutral-600">{notification.desc}</p>
                             </div>
                           ))}
                         </div>
@@ -368,7 +368,7 @@ const Layout = () => {
                   aria-haspopup="true"
                   aria-expanded={showUserDropdown}
                 >
-                  <Avatar user={user} size="h-10 w-10" rounded="rounded-2xl" fallbackClassName="bg-[#07152E] text-white text-sm" />
+                  <Avatar user={user} size="h-10 w-10" rounded="rounded-2xl" fallbackClassName="bg-black text-white text-sm" />
                 </button>
 
                 <AnimatePresence>
@@ -380,40 +380,40 @@ const Layout = () => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 shadow-2xl rounded-2xl p-2 z-[45]"
+                        className="absolute right-0 mt-2 w-56 bg-white border border-neutral-200 shadow-2xl rounded-2xl p-2 z-[45]"
                       >
-                        <div className="flex items-center gap-3 px-3 py-2 border-b border-slate-100 mb-1">
-                        <Avatar user={user} size="h-10 w-10" className="border border-[#2EA8FF]/30" />
-                        <div className="min-w-0">
-                          <p className="truncate text-xs font-bold text-slate-900">{user.name}</p>
-                          <p className="text-[10px] text-slate-500">{role === "ADMIN" ? "Admin" : "Employee"}</p>
+                        <div className="flex items-center gap-3 px-3 py-2 border-b border-neutral-200 mb-1">
+                          <Avatar user={user} size="h-10 w-10" className="border border-neutral-300" fallbackClassName="bg-black text-white text-sm" />
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-bold text-black">{user.name}</p>
+                            <p className="text-[10px] text-neutral-500">{role === "ADMIN" ? "Admin" : "Employee"}</p>
+                          </div>
                         </div>
-                      </div>
-                      <Link
+                        <Link
                           to="/settings"
                           onClick={() => setShowUserDropdown(false)}
-                          className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-colors"
+                          className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-neutral-800 hover:bg-neutral-100 hover:text-black rounded-xl transition-colors"
                         >
-                          <User className="w-4 h-4 text-[#2EA8FF]" />
+                          <User className="w-4 h-4 text-black" />
                           My Profile
                         </Link>
                         <Link
                           to="/settings"
                           onClick={() => setShowUserDropdown(false)}
-                          className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-colors"
+                          className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-neutral-800 hover:bg-neutral-100 hover:text-black rounded-xl transition-colors"
                         >
-                          <Settings className="w-4 h-4 text-slate-400" />
+                          <Settings className="w-4 h-4 text-neutral-500" />
                           Settings
                         </Link>
-                        <hr className="my-1 border-slate-100" />
+                        <hr className="my-1 border-neutral-200" />
                         <button
                           onClick={() => {
                             setShowUserDropdown(false);
                             logout();
                           }}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors text-left cursor-pointer"
+                          className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-neutral-900 hover:bg-neutral-100 rounded-xl transition-colors text-left cursor-pointer"
                         >
-                          <LogOut className="w-4 h-4 text-rose-500" />
+                          <LogOut className="w-4 h-4 text-neutral-700" />
                           Logout
                         </button>
                       </motion.div>
@@ -440,7 +440,7 @@ const Layout = () => {
         </main>
       </div>
 
-      <nav aria-label="Mobile navigation" className="h-[calc(64px+env(safe-area-inset-bottom))] bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden fixed bottom-0 left-0 right-0 border-t border-slate-200/60 flex items-center justify-around px-2 z-35 shadow-xl">
+      <nav aria-label="Mobile navigation" className="h-[calc(64px+env(safe-area-inset-bottom))] bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden fixed bottom-0 left-0 right-0 border-t border-neutral-200 flex items-center justify-around px-2 z-35 shadow-xl">
         {mobileNavItems.map((item) => {
           const isActive = location.pathname.startsWith(item.href)
           return (
@@ -448,11 +448,11 @@ const Layout = () => {
               key={item.name}
               to={item.href}
               aria-current={isActive ? "page" : undefined}
-              className={`flex min-h-12 flex-1 flex-col items-center justify-center py-1 font-medium transition-colors text-[10px] ${
-                isActive ? "text-[#2EA8FF] font-bold" : "text-slate-400 hover:text-slate-600"
+              className={`flex min-h-12 flex-1 flex-col items-center justify-center py-1 font-bold transition-colors text-[10px] ${
+                isActive ? "text-black font-extrabold" : "text-neutral-400 hover:text-black"
               }`}
             >
-              <item.icon className={`${role === "EMPLOYEE" ? "h-[22px] w-[22px]" : "h-5 w-5"} mb-0.5 ${isActive ? "text-[#2EA8FF]" : "text-slate-400"}`} />
+              <item.icon className={`${role === "EMPLOYEE" ? "h-[22px] w-[22px]" : "h-5 w-5"} mb-0.5 ${isActive ? "text-black" : "text-neutral-400"}`} />
               <span>{item.name}</span>
             </Link>
           )
@@ -463,9 +463,9 @@ const Layout = () => {
       {showFloatingButton && isMobile && role !== "EMPLOYEE" && (
         <button
           onClick={handleInstallApp}
-          className="fixed bottom-20 right-4 z-40 p-3 bg-[#2EA8FF] hover:bg-[#1F7AE0] text-white rounded-full shadow-2xl flex items-center justify-center ring-4 ring-[#2EA8FF]/10"
+          className="fixed bottom-20 right-4 z-40 p-3 bg-black hover:bg-neutral-800 text-white rounded-full shadow-2xl flex items-center justify-center ring-4 ring-black/10 cursor-pointer"
         >
-          <Download className="w-5 h-5" />
+          <Download className="w-5 h-5 text-white" />
         </button>
       )}
 
@@ -473,41 +473,41 @@ const Layout = () => {
       <AnimatePresence>
         {showInstallPrompt && (
           <>
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-45" onClick={handleDismissPrompt} />
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-45" onClick={handleDismissPrompt} />
             <motion.div
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="fixed bottom-0 left-0 right-0 bg-[#071426]/90 backdrop-blur-xl border-t border-white/10 rounded-t-3xl p-6 z-50 shadow-2xl flex flex-col space-y-5 text-white"
+              className="fixed bottom-0 left-0 right-0 bg-[#050505] backdrop-blur-xl border-t border-neutral-800 rounded-t-3xl p-6 z-50 shadow-2xl flex flex-col space-y-5 text-white"
             >
               <div className="flex justify-between items-start">
                 <div className="flex gap-3">
-                  <div className="p-3 bg-[#2EA8FF]/10 text-[#2EA8FF] rounded-2xl"><Smartphone className="w-6 h-6" /></div>
+                  <div className="p-3 bg-neutral-900 border border-neutral-800 text-white rounded-2xl"><Smartphone className="w-6 h-6" /></div>
                   <div>
-                    <h3 className="font-bold text-white text-base">Install KODEWAR</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">Add to your home screen for native access.</p>
+                    <h3 className="font-extrabold text-white text-base">Install KODEWAR</h3>
+                    <p className="text-xs text-neutral-400 mt-0.5">Add to your home screen for native access.</p>
                   </div>
                 </div>
-                <button onClick={handleDismissPrompt} className="p-1 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+                <button onClick={handleDismissPrompt} className="p-1 text-neutral-400 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
               </div>
 
-              <div className="space-y-3 bg-white/5 p-4 rounded-2xl border border-white/5">
-                <div className="flex items-center gap-2.5 text-xs text-slate-300 font-semibold">
-                  <ShieldCheck className="w-4.5 h-4.5 text-emerald-400" />
+              <div className="space-y-3 bg-neutral-900/60 p-4 rounded-2xl border border-neutral-800">
+                <div className="flex items-center gap-2.5 text-xs text-neutral-200 font-bold">
+                  <ShieldCheck className="w-4.5 h-4.5 text-white" />
                   <span>Faster Login & Dashboard Loads</span>
                 </div>
-                <div className="flex items-center gap-2.5 text-xs text-slate-300 font-semibold">
-                  <ShieldCheck className="w-4.5 h-4.5 text-emerald-400" />
+                <div className="flex items-center gap-2.5 text-xs text-neutral-200 font-bold">
+                  <ShieldCheck className="w-4.5 h-4.5 text-white" />
                   <span>Better GPS & Geolocation Access</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={handleDismissPrompt} className="btn-secondary py-3 text-sm font-semibold">
+                <button onClick={handleDismissPrompt} className="btn-secondary py-3 text-sm font-bold">
                   Not Now
                 </button>
-                <button onClick={handleInstallApp} className="btn-primary py-3 text-sm font-semibold rounded-xl">
+                <button onClick={handleInstallApp} className="btn-primary py-3 text-sm font-bold rounded-xl">
                   Install App
                 </button>
               </div>

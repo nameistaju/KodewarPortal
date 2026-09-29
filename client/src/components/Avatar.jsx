@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { assetUrl } from '../utils/assets';
 
 const initialsFor = (name = '') => {
@@ -45,7 +45,7 @@ const Avatar = ({
 
   return (
     <span
-      className={`${baseClass} inline-flex items-center justify-center bg-[#EBF7FF] text-[#1F7AE0] font-black ${fallbackClassName}`.trim()}
+      className={`${baseClass} inline-flex items-center justify-center bg-neutral-900 text-white font-extrabold ${fallbackClassName}`.trim()}
       aria-label={alt || displayName}
       title={displayName}
     >

@@ -60,26 +60,26 @@ const Leave = () => {
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="page-title text-slate-900">Leave Management</h1>
-          <p className="page-subtitle text-slate-500">{isAdmin ? "Manage leave applications" : "Your leave history and requests"}</p>
+          <h1 className="page-title text-black">Leave Management</h1>
+          <p className="page-subtitle text-neutral-500 font-medium">{isAdmin ? "Manage leave applications" : "Your leave history and requests"}</p>
         </div>
         {!isAdmin && (
-          <button onClick={()=> setShowModal(true)} className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center font-semibold rounded-xl">
-            <PlusIcon className="w-4 h-4" /> Apply for Leave
+          <button onClick={()=> setShowModal(true)} className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center font-bold rounded-xl cursor-pointer">
+            <PlusIcon className="w-4 h-4 text-white" /> Apply for Leave
           </button>
         )}
       </div>
         {!isAdmin && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 mb-8">
             {leaveStats.map((s)=>(
-              <div key={s.label} className="card card-hover p-5 sm:p-6 flex items-center gap-4 relative overflow-hidden group">
-                <div className="absolute left-0 top-0 bottom-0 w-1 rounded-r-full bg-slate-200 group-hover:bg-[#2EA8FF]" />
-                <div className="p-3 bg-slate-50 border border-slate-200/60 rounded-xl group-hover:bg-[#2EA8FF]/10 transition-colors duration-200">
-                    <s.icon className="w-5 h-5 text-slate-400 group-hover:text-[#1F7AE0] transition-colors duration-200" />
+              <div key={s.label} className="card card-hover p-5 sm:p-6 flex items-center gap-4 relative overflow-hidden group border border-neutral-200">
+                <div className="absolute left-0 top-0 bottom-0 w-1 rounded-r-full bg-neutral-200 group-hover:bg-black" />
+                <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl group-hover:bg-neutral-100 transition-colors duration-200">
+                    <s.icon className="w-5 h-5 text-neutral-500 group-hover:text-black transition-colors duration-200" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 font-semibold">{s.label}</p>
-                  <p className="text-2xl font-extrabold text-[#111827] tracking-tight">{s.value} <span className="text-sm font-normal text-slate-500">remaining</span></p>
+                  <p className="text-xs text-neutral-500 font-bold uppercase">{s.label}</p>
+                  <p className="text-2xl font-black text-black tracking-tight">{s.value} <span className="text-sm font-normal text-neutral-500">remaining</span></p>
                 </div>
               </div>
             ))}

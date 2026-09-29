@@ -51,34 +51,34 @@ const Attendance = () => {
   const isPunchedOut = Boolean(todayRecord?.punchOut?.time);
   const attendanceStatus = isPunchedOut ? 'Work day completed' : isPunchedIn ? 'Checked in' : 'Not checked in';
   const statusTone = isPunchedOut || isPunchedIn
-    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-    : 'border-slate-200 bg-slate-50 text-slate-600';
+    ? 'border-neutral-900 bg-black text-white'
+    : 'border-neutral-300 bg-neutral-100 text-neutral-800';
   const formattedTime = liveTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const formattedDate = liveTime.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
 
   return (
     <div className="mx-auto max-w-5xl animate-fade-in space-y-6 px-1 sm:px-0">
       <div className="page-header">
-        <h1 className="page-title text-slate-900">Attendance</h1>
-        <p className="page-subtitle text-slate-500">Location-verified office attendance check-in and check-out.</p>
+        <h1 className="page-title text-black">Attendance</h1>
+        <p className="page-subtitle text-neutral-500">Location-verified office attendance check-in and check-out.</p>
       </div>
 
-      <section className="card relative overflow-hidden p-5 shadow-sm sm:p-8">
+      <section className="card border border-neutral-200 relative overflow-hidden p-5 shadow-sm sm:p-8 bg-white">
         <div className="mx-auto flex max-w-xl flex-col items-center text-center">
-          <div className="flex w-full items-center justify-between gap-4 border-b border-slate-100 pb-4 text-left">
+          <div className="flex w-full items-center justify-between gap-4 border-b border-neutral-200 pb-4 text-left">
             <div>
-              <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-                <Calendar className="h-4 w-4 text-[#1F7AE0]" aria-hidden="true" />
+              <div className="flex items-center gap-2 text-sm font-semibold text-neutral-500">
+                <Calendar className="h-4 w-4 text-black" aria-hidden="true" />
                 <span>{formattedDate}</span>
               </div>
-              <div className="mt-1 flex items-center gap-2 text-2xl font-extrabold tabular-nums text-slate-900">
-                <Clock className="h-5 w-5 text-[#1F7AE0]" aria-hidden="true" />
+              <div className="mt-1 flex items-center gap-2 text-2xl font-black tabular-nums text-black">
+                <Clock className="h-5 w-5 text-black" aria-hidden="true" />
                 <span>{formattedTime}</span>
               </div>
             </div>
             <div className="text-right">
               <span className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-bold ${statusTone}`}>{attendanceStatus}</span>
-              <p className="mt-2 text-sm font-bold text-slate-700">Office Work</p>
+              <p className="mt-2 text-sm font-extrabold text-black">Office Work</p>
             </div>
           </div>
 
@@ -94,8 +94,8 @@ const Attendance = () => {
           />
 
           {(gpsError || officeError) && (
-            <div className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-left text-sm font-semibold text-rose-700">
-              <ShieldAlert className="h-5 w-5 shrink-0" aria-hidden="true" />
+            <div className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-neutral-300 bg-neutral-100 p-4 text-left text-sm font-bold text-black">
+              <ShieldAlert className="h-5 w-5 shrink-0 text-black" aria-hidden="true" />
               <span>{officeError || 'Enable location access to continue with attendance.'}</span>
             </div>
           )}
@@ -105,12 +105,12 @@ const Attendance = () => {
       <AttendanceStats history={history} todayRecord={todayRecord} />
 
       {history.length === 0 ? (
-        <div className="card border-dashed p-8 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EBF7FF] text-[#1F7AE0]">
+        <div className="card border-dashed border-neutral-300 p-8 text-center bg-white">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-100 text-black">
             <Crosshair className="h-6 w-6" aria-hidden="true" />
           </div>
-          <h2 className="mt-4 text-base font-bold text-[#111827]">No attendance recorded yet.</h2>
-          <p className="mt-1 text-sm text-slate-500">Punch in to begin your workday.</p>
+          <h2 className="mt-4 text-base font-extrabold text-black">No attendance recorded yet.</h2>
+          <p className="mt-1 text-sm text-neutral-500 font-medium">Punch in to begin your workday.</p>
         </div>
       ) : (
         <AttendanceHistory history={history} />

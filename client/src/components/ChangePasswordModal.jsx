@@ -90,28 +90,28 @@ const ChangePasswordModal = ({open, onClose }) => {
      if(!open) return null;
 
   return (
-    <div onClick={onClose} className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs'>
-        <div className='relative card w-full max-w-md animate-fade-in text-[#475569]' onClick={(e) => e.stopPropagation()}>
+    <div onClick={onClose} className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs'>
+        <div className='relative card w-full max-w-md animate-fade-in text-neutral-800 border border-neutral-200 bg-white' onClick={(e) => e.stopPropagation()}>
             <div className='flex items-center justify-between p-6 pb-0'>
-                <h2 className='text-lg font-bold text-[#111827] flex items-center gap-2'>
-                    <LockIcon className="w-5 h-5 text-[#2EA8FF]"/> Change Password
+                <h2 className='text-lg font-black text-black flex items-center gap-2'>
+                    <LockIcon className="w-5 h-5 text-black"/> Change Password
                 </h2>
-                <button onClick={onClose} className='p-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600 cursor-pointer' aria-label="Close modal"><X className="w-5 h-5"/></button>
+                <button onClick={onClose} className='p-2 rounded-lg hover:bg-neutral-100 transition-colors text-neutral-400 hover:text-black cursor-pointer' aria-label="Close modal"><X className="w-5 h-5"/></button>
             </div>
             <form className="p-6 space-y-5" onSubmit={handleSubmit}>
                 {message.text && (
-                    <div className={`p-3 rounded-xl text-sm border ${message.type === "success" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-rose-50 text-rose-700 border-rose-100"}`}>
+                    <div className={`p-3 rounded-xl text-sm border font-bold ${message.type === "success" ? "bg-black text-white border-neutral-900" : "bg-neutral-100 text-neutral-900 border-neutral-300"}`}>
                         {message.text}
                     </div>
                 )}
                 <div>
-                    <label htmlFor="currentPassword" className="block text-sm font-semibold text-[#475569] mb-2">Current Password</label>
+                    <label htmlFor="currentPassword" className="block text-sm font-bold text-black mb-2">Current Password</label>
                     <div className="relative">
-                        <input id="currentPassword" type={showCurrent ? "text" : "password"} name="currentPassword" required className="pr-10"/>
+                        <input id="currentPassword" type={showCurrent ? "text" : "password"} name="currentPassword" required className="pr-10 border-neutral-200 focus:border-black text-black"/>
                         <button
                             type="button"
                             onClick={() => setShowCurrent(!showCurrent)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-black focus:outline-none cursor-pointer"
                             aria-label={showCurrent ? "Hide current password" : "Show current password"}
                         >
                             {showCurrent ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
@@ -119,13 +119,13 @@ const ChangePasswordModal = ({open, onClose }) => {
                     </div>
                 </div>
                 <div>
-                    <label htmlFor="newPassword" className="block text-sm font-semibold text-[#475569] mb-2">New Password</label>
+                    <label htmlFor="newPassword" className="block text-sm font-bold text-black mb-2">New Password</label>
                     <div className="relative">
-                        <input id="newPassword" type={showNew ? "text" : "password"} name="newPassword" required className="pr-10"/>
+                        <input id="newPassword" type={showNew ? "text" : "password"} name="newPassword" required className="pr-10 border-neutral-200 focus:border-black text-black"/>
                         <button
                             type="button"
                             onClick={() => setShowNew(!showNew)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-black focus:outline-none cursor-pointer"
                             aria-label={showNew ? "Hide new password" : "Show new password"}
                         >
                             {showNew ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
@@ -133,13 +133,13 @@ const ChangePasswordModal = ({open, onClose }) => {
                     </div>
                 </div>
                 <div>
-                    <label htmlFor="confirmPassword" className="block text-sm font-semibold text-[#475569] mb-2">Confirm New Password</label>
+                    <label htmlFor="confirmPassword" className="block text-sm font-bold text-black mb-2">Confirm New Password</label>
                     <div className="relative">
-                        <input id="confirmPassword" type={showConfirm ? "text" : "password"} name="confirmPassword" required className="pr-10"/>
+                        <input id="confirmPassword" type={showConfirm ? "text" : "password"} name="confirmPassword" required className="pr-10 border-neutral-200 focus:border-black text-black"/>
                         <button
                             type="button"
                             onClick={() => setShowConfirm(!showConfirm)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-black focus:outline-none cursor-pointer"
                             aria-label={showConfirm ? "Hide confirm password" : "Show confirm password"}
                         >
                             {showConfirm ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
@@ -147,9 +147,9 @@ const ChangePasswordModal = ({open, onClose }) => {
                     </div>
                 </div>
                 <div className='flex gap-3 pt-2'>
-                    <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-                    <button type="submit" disabled={loading} className="btn-primary flex-1 flex justify-center items-center gap-2">
-                        {loading && <Loader2Icon className="w-4 h-4 animate-spin"/>}
+                    <button type="button" onClick={onClose} className="btn-secondary flex-1 font-bold cursor-pointer">Cancel</button>
+                    <button type="submit" disabled={loading} className="btn-primary flex-1 flex justify-center items-center gap-2 font-bold cursor-pointer">
+                        {loading && <Loader2Icon className="w-4 h-4 animate-spin text-white"/>}
                         Update Password
                     </button>
                 </div>

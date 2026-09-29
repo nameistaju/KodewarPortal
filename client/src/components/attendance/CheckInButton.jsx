@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import styled from 'styled-components'
-import { LogIn, LogOut, ShieldAlert, Loader2, MapPin, CheckCircle, Clock } from 'lucide-react'
+import { ShieldAlert, Loader2, MapPin, CheckCircle, Clock } from 'lucide-react'
 import api from '../../api/axios'
 import { toastError } from '../../api/helpers'
 import toast from 'react-hot-toast'
@@ -42,7 +42,7 @@ const StyledSwitchContainer = styled.div`
     }
 
     &:focus-within {
-      outline: 2px solid #2ea8ff;
+      outline: 2px solid #000000;
       outline-offset: 4px;
     }
   }
@@ -275,27 +275,27 @@ const CheckInButton = ({
     : null
 
   return (
-    <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col gap-6 w-full">
+    <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-sm flex flex-col gap-6 w-full">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-bold text-slate-900 text-base">Office Attendance Power Control</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Location-verified 3D power switch clock-in & clock-out</p>
+          <h3 className="font-extrabold text-black text-base">Office Attendance Power Control</h3>
+          <p className="text-xs text-neutral-500 mt-0.5">Location-verified 3D power switch clock-in & clock-out</p>
         </div>
 
         {/* Status Badge */}
         <div>
           {isPunchedOut ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-neutral-900 text-white border border-neutral-800">
               <CheckCircle className="w-3.5 h-3.5" />
               Completed
             </span>
           ) : isPunchedIn ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-black text-white border border-neutral-900">
+              <span className="w-2 h-2 rounded-full bg-white animate-ping" />
               Punched In
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-neutral-100 text-neutral-700 border border-neutral-200">
               Not Punched In
             </span>
           )}
@@ -303,14 +303,14 @@ const CheckInButton = ({
       </div>
 
       {/* Geofence Status */}
-      <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3 flex items-center justify-between text-xs">
-        <div className="flex items-center gap-2 text-slate-600">
-          <MapPin className="w-4 h-4 text-slate-400" />
+      <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-3 flex items-center justify-between text-xs">
+        <div className="flex items-center gap-2 text-neutral-700 font-medium">
+          <MapPin className="w-4 h-4 text-black" />
           <span>
             {loadingCoords ? (
               'Checking location...'
             ) : distance !== null ? (
-              <>Distance to Office: <strong className="text-slate-800">{Math.round(distance)}m</strong> (Allowed: {officeRadius || 100}m)</>
+              <>Distance to Office: <strong className="text-black">{Math.round(distance)}m</strong> (Allowed: {officeRadius || 100}m)</>
             ) : (
               'Location unavailable'
             )}
@@ -319,10 +319,10 @@ const CheckInButton = ({
 
         {!loadingCoords && distance !== null && (
           <span
-            className={`font-semibold px-2.5 py-0.5 rounded-full text-[11px] ${
+            className={`font-bold px-2.5 py-0.5 rounded-full text-[11px] ${
               isInsideRadius
-                ? 'bg-emerald-100 text-emerald-700'
-                : 'bg-rose-100 text-rose-700'
+                ? 'bg-neutral-900 text-white'
+                : 'bg-neutral-200 text-neutral-900'
             }`}
           >
             {isInsideRadius ? 'Inside Office' : 'Outside Office'}
@@ -331,8 +331,8 @@ const CheckInButton = ({
       </div>
 
       {!isInsideRadius && !isPunchedIn && !isPunchedOut && !loadingCoords && (
-        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-xl text-xs">
-          <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2 bg-neutral-100 border border-neutral-300 text-neutral-900 p-3 rounded-xl text-xs font-medium">
+          <ShieldAlert className="w-4 h-4 text-black shrink-0 mt-0.5" />
           <span>You must be physically present inside the office radius ({officeRadius || 100}m) to punch in.</span>
         </div>
       )}
@@ -365,15 +365,15 @@ const CheckInButton = ({
 
           {/* Loading Spinner Overlay */}
           {loading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-md backdrop-blur-[1px]">
-              <Loader2 className="w-8 h-8 text-rose-500 animate-spin" />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-md backdrop-blur-[1px]">
+              <Loader2 className="w-8 h-8 text-white animate-spin" />
             </div>
           )}
         </div>
 
         {/* Action Title & Instructions */}
         <div className="mt-4 text-center">
-          <p className="text-lg font-black tracking-wider text-slate-900 uppercase">
+          <p className="text-lg font-black tracking-wider text-black uppercase">
             {isPunchedOut
               ? 'WORKDAY COMPLETED'
               : isPunchedIn
@@ -383,11 +383,11 @@ const CheckInButton = ({
               : 'PUNCH IN'}
           </p>
 
-          <p className="text-xs font-semibold text-slate-500 mt-1">
+          <p className="text-xs font-bold text-neutral-500 mt-1">
             {isPunchedOut ? (
-              <>Punched out at <span className="font-bold text-slate-700">{punchOutFormatted}</span></>
+              <>Punched out at <span className="font-bold text-black">{punchOutFormatted}</span></>
             ) : isPunchedIn ? (
-              <>Punched in at <span className="font-bold text-slate-700">{punchInFormatted}</span></>
+              <>Punched in at <span className="font-bold text-black">{punchInFormatted}</span></>
             ) : !isInsideRadius && !loadingCoords ? (
               `Move within ${officeRadius || 100}m of office to unlock`
             ) : (
@@ -397,8 +397,8 @@ const CheckInButton = ({
 
           {/* Working Time Counter */}
           {isPunchedIn && elapsed && (
-            <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-mono font-bold">
-              <Clock className="w-3.5 h-3.5" />
+            <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neutral-100 border border-neutral-300 text-black text-xs font-mono font-bold">
+              <Clock className="w-3.5 h-3.5 text-black" />
               <span>Working Time: {elapsed}</span>
             </div>
           )}

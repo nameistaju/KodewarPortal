@@ -47,33 +47,27 @@ const AttendanceStats = ({ history, todayRecord: explicitTodayRecord }) => {
       : 'Punch in to begin'
 
   const stats = [
-    { label: "Today's Hours", value: sessionHours, Icon: Clock, tone: 'blue' },
-    { label: 'Status', value: status, Icon: Activity, tone: activeSession ? 'emerald' : 'slate' },
-    { label: "Today's Attendance", value: attendance, Icon: CalendarCheck, tone: todayRecord ? 'blue' : 'slate' },
-    { label: 'Last Punch', value: formatTime(lastPunch), Icon: History, tone: lastPunch ? 'emerald' : 'slate' },
-    { label: 'Current Session', value: currentSession, Icon: Timer, tone: activeSession ? 'emerald' : 'slate' }
+    { label: "Today's Hours", value: sessionHours, Icon: Clock },
+    { label: 'Status', value: status, Icon: Activity },
+    { label: "Today's Attendance", value: attendance, Icon: CalendarCheck },
+    { label: 'Last Punch', value: formatTime(lastPunch), Icon: History },
+    { label: 'Current Session', value: currentSession, Icon: Timer }
   ]
-
-  const toneClasses = {
-    blue: 'border-[#2EA8FF]/20 bg-[#EBF7FF] text-[#1F7AE0]',
-    emerald: 'border-emerald-100 bg-emerald-50 text-emerald-700',
-    slate: 'border-slate-200 bg-white text-slate-600'
-  }
 
   return (
     <section aria-label="Attendance summary" className="space-y-3">
       <div className="flex items-center justify-between px-1">
-        <h2 className="text-sm font-extrabold uppercase tracking-wider text-[#111827]">Attendance Summary</h2>
-        <span className="text-xs font-semibold text-slate-400">Today</span>
+        <h2 className="text-sm font-black uppercase tracking-wider text-black">Attendance Summary</h2>
+        <span className="text-xs font-semibold text-neutral-400">Today</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        {stats.map(({ label, value, Icon: StatIcon, tone }) => (
-          <div key={label} className={`rounded-2xl border p-4 shadow-sm ${toneClasses[tone]}`}>
-            <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider opacity-80">
-              {createElement(StatIcon, { className: "h-4 w-4", "aria-hidden": true })}
+        {stats.map(({ label, value, Icon: StatIcon }) => (
+          <div key={label} className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+              {createElement(StatIcon, { className: "h-4 w-4 text-black", "aria-hidden": true })}
               <span>{label}</span>
             </div>
-            <p className="mt-2 truncate text-base font-black text-[#111827]">{value}</p>
+            <p className="mt-2 truncate text-base font-black text-black">{value}</p>
           </div>
         ))}
       </div>
