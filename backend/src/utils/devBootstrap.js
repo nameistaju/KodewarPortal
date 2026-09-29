@@ -51,41 +51,42 @@ export const runDevelopmentBootstrap = async () => {
     const empHash = await hashPassword(empPassword);
 
     if (!existingEmp) {
-      await supabase.from('employees').insert({
-        employee_code: 'EMP-0002',
-        name: 'Demo Employee',
-        email: empEmail,
-        password_hash: empHash,
-        department: 'DEVELOPMENT',
-        designation: 'Software Developer',
-        joining_date: '2023-01-01',
-        role: 'employee',
-        leave_balance_casual: 12,
-        leave_balance_sick: 12,
-        is_active: true
-      });
-      logger.info(`Created bootstrap employee account in Supabase (${empEmail})`);
+      // Check if rahulmarketing@sharpkode.com exists and update its email to empEmail
+      const { data: rahulEmp } = await supabase
+        .from('employees')
+        .select('id')
+        .ilike('email', 'rahulmarketing@sharpkode.com')
+        .maybeSingle();
+
+      if (rahulEmp) {
+        await supabase
+          .from('employees')
+          .update({ email: empEmail, password_hash: empHash, is_active: true })
+          .eq('id', rahulEmp.id);
+        logger.info(`Updated existing employee email to (${empEmail})`);
+      } else {
+        const uniqueCode = `EMP-${Math.floor(1000 + Math.random() * 9000)}`;
+        await supabase.from('employees').insert({
+          employee_code: uniqueCode,
+          name: 'Demo Employee',
+          email: empEmail,
+          password_hash: empHash,
+          department: 'DEVELOPMENT',
+          designation: 'Software Developer',
+          joining_date: '2023-01-01',
+          role: 'employee',
+          leave_balance_casual: 12,
+          leave_balance_sick: 12,
+          is_active: true
+        });
+        logger.info(`Created bootstrap employee account in Supabase (${empEmail})`);
+      }
     } else {
       await supabase
         .from('employees')
         .update({ password_hash: empHash, is_active: true })
         .eq('id', existingEmp.id);
       logger.info(`Updated bootstrap employee password in Supabase (${empEmail})`);
-    }
-
-    // Also sync rahulmarketing@sharpkode.com for backwards compatibility if present
-    const { data: existingRahul } = await supabase
-      .from('employees')
-      .select('id')
-      .ilike('email', 'rahulmarketing@sharpkode.com')
-      .maybeSingle();
-
-    if (existingRahul) {
-      const rahulHash = await hashPassword('Employee@SharpKode2026');
-      await supabase
-        .from('employees')
-        .update({ password_hash: rahulHash, is_active: true })
-        .eq('id', existingRahul.id);
     }
   } catch (err) {
     logger.warn('Development bootstrap skipped or encountered PGRST notice', { message: err.message });

@@ -169,3 +169,45 @@ export const getLeaveBalances = async (employeeId) => {
     { leaveType: 'SICK', allocatedDays: 12, availableDays: emp?.leave_balance_sick ?? 12 }
   ];
 };
+
+export const apply = applyLeave;
+export const history = getLeaveRequests;
+export const approve = async (leaveId, adminId, remarks) => reviewLeaveRequest(leaveId, { status: 'approved', remarks }, adminId);
+export const reject = async (leaveId, adminId, remarks) => reviewLeaveRequest(leaveId, { status: 'rejected', remarks }, adminId);
+
+export const cancel = async (leaveId, employeeId) => {
+  const { data: leaveRow } = await supabase
+    .from('leaves')
+    .select('*')
+    .eq('id', leaveId)
+    .single();
+
+  if (!leaveRow) {
+    throw new AppError('Leave request not found', 404);
+  }
+
+  if (String(leaveRow.employee_id) !== String(employeeId)) {
+    throw new AppError('You can only cancel your own leave requests', 403);
+  }
+
+  if (leaveRow.status !== 'pending') {
+    throw new AppError('Only pending leave requests can be cancelled', 400);
+  }
+
+  const { data: updatedRow, error } = await supabase
+    .from('leaves')
+    .update({
+      status: 'cancelled',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', leaveId)
+    .select('*')
+    .single();
+
+  if (error || !updatedRow) {
+    throw new AppError('Failed to cancel leave request', 500);
+  }
+
+  return formatLeaveRecord(updatedRow);
+};
+

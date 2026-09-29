@@ -172,3 +172,19 @@ export const activateEmployee = (employeeId) => setEmployeeStatus(employeeId, 'A
 
 export const getProfile = (employeeId) => getEmployeeById(employeeId);
 export const updateProfile = (employeeId, payload) => updateEmployee(employeeId, payload);
+
+export const getEmployeeSecurity = async (employeeId) => {
+  const emp = await getEmployeeById(employeeId);
+  return {
+    employeeId: emp._id,
+    forcePasswordChange: false,
+    mustChangePassword: false,
+    twoFactorEnabled: false
+  };
+};
+
+export const logoutEmployeeFromAllDevices = async (employeeId) => {
+  const emp = await getEmployeeById(employeeId);
+  return emp;
+};
+
