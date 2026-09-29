@@ -38,13 +38,11 @@ const LoginForm = ({ role }) => {
           </BackLink>
 
           <CardHeader>
-            <LogoWrapper>
-              <img
-                src={isAdmin ? '/adminLOGO.png' : '/EmployeeLOGO.png'}
-                alt="SharpKode Logo"
-                className="logo-img"
-              />
-            </LogoWrapper>
+            <BrandTitleContainer>
+              <BrandWordmark>KODEWAR</BrandWordmark>
+              <ProductSubtitle>WORKFORCE</ProductSubtitle>
+            </BrandTitleContainer>
+
             <WelcomeTitle>{isAdmin ? 'Admin Portal' : 'Welcome Back'}</WelcomeTitle>
             <WelcomeSubTitle>
               {isAdmin ? 'Sign in to manage organization' : 'Sign in to access your employee account'}
@@ -100,7 +98,7 @@ const LoginForm = ({ role }) => {
 
             <SubmitButton type="submit" disabled={loading}>
               {loading ? (
-                <Loader2Icon className="animate-spin h-5 w-5 mr-2" />
+                <Loader2Icon className="animate-spin h-5 w-5 mr-2 text-black" />
               ) : null}
               <span>Sign In</span>
             </SubmitButton>
@@ -122,11 +120,12 @@ const BackgroundContainer = styled.div`
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  background-image: url('/bgforLogin_mobile.png');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)), url('/bgforLogin_mobile.png');
+  filter: grayscale(100%);
   overflow: hidden;
 
   @media (min-width: 768px) {
-    background-image: url('/bgforLogin_desktop.png');
+    background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('/bgforLogin_desktop.png');
     background-position: right center;
     justify-content: flex-start;
     padding-left: 8%;
@@ -138,8 +137,8 @@ const CardWrapper = styled.div`
   position: relative;
   width: 100%;
   max-width: 420px;
-  border-radius: 28px;
-  padding: 2px;
+  border-radius: 26px;
+  padding: 1.5px;
   background: transparent;
   overflow: hidden;
   display: flex;
@@ -159,16 +158,17 @@ const CardWrapper = styled.div`
     height: 200%;
     background: conic-gradient(
       transparent,
-      rgba(255, 255, 255, 0.4),
-      #2ea8ff,
+      rgba(255, 255, 255, 0.15),
+      rgba(255, 255, 255, 0.5),
+      #ffffff,
       transparent 60%
     );
-    animation: rotateGlow 6s linear infinite;
+    animation: rotateMonochromeGlow 6s linear infinite;
     pointer-events: none;
     z-index: 0;
   }
 
-  @keyframes rotateGlow {
+  @keyframes rotateMonochromeGlow {
     0% {
       transform: rotate(0deg);
     }
@@ -182,11 +182,12 @@ const GlassCard = styled.div`
   position: relative;
   z-index: 1;
   width: 100%;
-  background: rgba(15, 23, 42, 0.85);
+  background: #0a0a0a;
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
-  border-radius: 26px;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.1);
   padding: 24px 20px;
   box-sizing: border-box;
   color: #ffffff;
@@ -200,16 +201,16 @@ const BackLink = styled(Link)`
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: rgba(255, 255, 255, 0.7);
+  color: #b0b0b0;
   font-family: 'Poppins', 'Inter', sans-serif;
   font-size: 13px;
   font-weight: 500;
   text-decoration: none;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   transition: color 0.2s ease;
 
   &:hover {
-    color: #2ea8ff;
+    color: #ffffff;
   }
 `
 
@@ -218,26 +219,34 @@ const CardHeader = styled.div`
   flex-direction: column;
   align-items: center;
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 `
 
-const LogoWrapper = styled.div`
+const BrandTitleContainer = styled.div`
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+`
 
-  .logo-img {
-    height: 75px;
-    width: auto;
-    object-fit: contain;
-    mix-blend-mode: screen;
-    transition: all 0.3s ease;
+const BrandWordmark = styled.span`
+  font-family: 'Poppins', 'Inter', sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+`
 
-    @media (min-width: 768px) {
-      height: 95px;
-    }
-  }
+const ProductSubtitle = styled.span`
+  font-family: 'Poppins', 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #999999;
+  letter-spacing: 0.3em;
+  margin-top: 4px;
+  text-transform: uppercase;
 `
 
 const WelcomeTitle = styled.h1`
@@ -249,14 +258,14 @@ const WelcomeTitle = styled.h1`
   letter-spacing: -0.02em;
 
   @media (min-width: 768px) {
-    font-size: 26px;
+    font-size: 24px;
   }
 `
 
 const WelcomeSubTitle = styled.p`
   font-family: 'Poppins', 'Inter', sans-serif;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
+  color: #afafaf;
   margin-top: 4px;
   margin-bottom: 0;
 `
@@ -277,7 +286,7 @@ const Label = styled.label`
   font-family: 'Poppins', 'Inter', sans-serif;
   font-size: 11px;
   font-weight: 600;
-  color: #2ea8ff;
+  color: #cccccc;
   text-transform: uppercase;
   letter-spacing: 0.1em;
 `
@@ -287,26 +296,26 @@ const NeumorphicInputWrapper = styled.div`
   width: 100%;
   display: flex;
   align-items: center;
-  background: rgba(10, 15, 29, 0.65);
+  background: #151515;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.6), inset -2px -2px 6px rgba(255, 255, 255, 0.03);
+  border-radius: 14px;
+  box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.6), inset -2px -2px 6px rgba(255, 255, 255, 0.02);
   transition: all 0.25s ease;
 
   &:focus-within {
-    border-color: #2ea8ff;
-    box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 3px rgba(46, 168, 255, 0.25);
-    background: rgba(10, 15, 29, 0.85);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 3px rgba(255, 255, 255, 0.15);
+    background: #1c1c1c;
   }
 
   &:hover:not(:focus-within) {
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.25);
   }
 `
 
 const IconContainer = styled.div`
   padding-left: 14px;
-  color: rgba(255, 255, 255, 0.45);
+  color: #999999;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -325,7 +334,7 @@ const StyledInput = styled.input`
   font-weight: 500;
 
   &::placeholder {
-    color: rgba(255, 255, 255, 0.35);
+    color: #777777;
   }
 
   &:focus {
@@ -336,7 +345,7 @@ const StyledInput = styled.input`
 const EyeButton = styled.button`
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.5);
+  color: #999999;
   cursor: pointer;
   padding: 0 14px;
   display: flex;
@@ -345,7 +354,7 @@ const EyeButton = styled.button`
   transition: color 0.2s ease;
 
   &:hover {
-    color: #2ea8ff;
+    color: #ffffff;
   }
 `
 
@@ -353,33 +362,37 @@ const SubmitButton = styled.button`
   width: 100%;
   padding: 13px;
   margin-top: 8px;
-  background: linear-gradient(135deg, #2ea8ff, #1f7ae0);
+  background: #ffffff;
   border: none;
-  border-radius: 16px;
-  color: #ffffff;
+  border-radius: 14px;
+  color: #000000;
   font-family: 'Poppins', 'Inter', sans-serif;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 20px rgba(46, 168, 255, 0.3);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.15);
 
   &:hover:not(:disabled) {
-    background: linear-gradient(135deg, #3bb0ff, #1d72d6);
-    box-shadow: 0 8px 25px rgba(46, 168, 255, 0.45);
+    background: #e5e5e5;
+    color: #000000;
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.25);
   }
 
   &:active:not(:disabled) {
+    background: #cccccc;
     transform: scale(0.98);
   }
 
   &:disabled {
-    opacity: 0.6;
+    background: #333333;
+    color: #777777;
     cursor: not-allowed;
     box-shadow: none;
+    transform: none;
   }
 `
 
