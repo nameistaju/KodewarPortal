@@ -75,6 +75,18 @@ const formatAttendanceRecord = (row, employeeData = null) => {
     workingHours = Number(((punchOutTime - punchInTime) / 3600000).toFixed(2));
   }
 
+  const rawStatus = (row.status || '').toLowerCase();
+  let statusVal = 'ABSENT';
+  if (rawStatus === 'present' || rawStatus === 'punched_in' || rawStatus === 'punched_out') {
+    statusVal = 'PRESENT';
+  } else if (rawStatus === 'late') {
+    statusVal = 'LATE';
+  } else if (rawStatus === 'half_day') {
+    statusVal = 'HALF_DAY';
+  } else if (row.status) {
+    statusVal = String(row.status).toUpperCase();
+  }
+
   return {
     _id: String(row.id),
     id: String(row.id),
@@ -98,8 +110,8 @@ const formatAttendanceRecord = (row, employeeData = null) => {
       }
     } : null,
     workingHours,
-    attendanceStatus: row.status || 'ABSENT',
-    status: row.status || 'ABSENT',
+    attendanceStatus: statusVal,
+    status: statusVal,
     created_at: row.created_at,
     updated_at: row.updated_at
   };
@@ -135,6 +147,9 @@ export const punchIn = async (employeeId, payload) => {
   }
 
   const punchInTime = new Date().toISOString();
+  const punchInDate = new Date(punchInTime);
+  const isLate = isLaterThanLocalTime(punchInDate, 9, 30);
+  const dbStatus = isLate ? 'late' : 'present';
 
   let resultData;
   if (existingRecord) {
@@ -144,7 +159,7 @@ export const punchIn = async (employeeId, payload) => {
         punch_in: punchInTime,
         latitude: location.latitude,
         longitude: location.longitude,
-        status: 'PUNCHED_IN',
+        status: dbStatus,
         updated_at: punchInTime
       })
       .eq('id', existingRecord.id)
@@ -162,7 +177,7 @@ export const punchIn = async (employeeId, payload) => {
         punch_in: punchInTime,
         latitude: location.latitude,
         longitude: location.longitude,
-        status: 'PUNCHED_IN',
+        status: dbStatus,
         created_at: punchInTime,
         updated_at: punchInTime
       })
@@ -195,6 +210,7 @@ export const punchOut = async (employeeId, payload) => {
   }
 
   const punchOutTime = new Date().toISOString();
+  const currentDbStatus = openRecord.status || 'present';
 
   const { data: updated, error } = await supabase
     .from('attendance')
@@ -202,7 +218,7 @@ export const punchOut = async (employeeId, payload) => {
       punch_out: punchOutTime,
       latitude: location.latitude,
       longitude: location.longitude,
-      status: 'PUNCHED_OUT',
+      status: currentDbStatus,
       updated_at: punchOutTime
     })
     .eq('id', openRecord.id)

@@ -4,8 +4,8 @@
   "description": "Internal attendance and leave portal for KODEWAR Workforce.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#071426",
-  "theme_color": "#00AEEF",
+  "background_color": "#050505",
+  "theme_color": "#000000",
   "orientation": "portrait-primary",
   "icons": [
     {

@@ -9,23 +9,32 @@ const Announcements = () => {
   const { user, token } = useAuth()
   const isAdmin = user?.role === "ADMIN"
   const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     if (!token || !user) return;
-    try { setItems(unwrapItems(await api.get("/announcements?activeOnly=true"))) }
-    catch (error) { toastError(error) }
+    try {
+      setLoading(true)
+      const res = await api.get("/announcements?activeOnly=true")
+      setItems(unwrapItems(res))
+    } catch (error) {
+      toastError(error)
+    } finally {
+      setLoading(false)
+    }
   }, [token, user])
 
   useEffect(()=>{ load() }, [load])
 
   const submit = async (event) => {
     event.preventDefault()
-    const payload = Object.fromEntries(new FormData(event.currentTarget).entries())
+    const form = event.currentTarget
+    const payload = Object.fromEntries(new FormData(form).entries())
     payload.isPinned = payload.isPinned === "on"
     try {
       await api.post("/announcements", payload)
       toast.success("Announcement published")
-      event.currentTarget.reset()
+      form.reset()
       load()
     } catch (error) { toastError(error) }
   }
@@ -61,24 +70,42 @@ const Announcements = () => {
         </form>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {items.map((item)=>(
-          <article 
-            key={item._id} 
-            className={`card p-5 shadow-sm transition-all duration-300 border ${
-              item.isPinned 
-                ? 'bg-black text-white border-neutral-900 shadow-md' 
-                : 'hover:shadow-md border-neutral-200 bg-white text-black'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <h2 className={`font-black ${item.isPinned ? 'text-white' : 'text-black'}`}>{item.title}</h2>
-              {item.isPinned && <span className="badge bg-white text-black border border-white font-bold text-[10px]">📌 Pinned</span>}
+        {loading ? (
+          <>
+            <div className="card p-5 border border-neutral-200 bg-white space-y-3">
+              <div className="h-5 w-1/2 skeleton rounded" />
+              <div className="h-3 w-1/4 skeleton rounded" />
+              <div className="h-12 w-full skeleton rounded mt-4" />
             </div>
-            <p className={`text-xs font-medium mt-1 ${item.isPinned ? 'text-neutral-400' : 'text-neutral-500'}`}>{formatDate(item.visibleFrom)}</p>
-            <p className={`text-sm mt-4 whitespace-pre-wrap leading-relaxed ${item.isPinned ? 'text-neutral-200' : 'text-neutral-700'}`}>{item.message}</p>
-          </article>
-        ))}
-        {items.length === 0 && <div className="md:col-span-2 card border border-neutral-200 bg-white"><EmptyState title="No active announcements" description="Published announcements will show up here for the team." /></div>}
+            <div className="card p-5 border border-neutral-200 bg-white space-y-3 hidden md:block">
+              <div className="h-5 w-1/2 skeleton rounded" />
+              <div className="h-3 w-1/4 skeleton rounded" />
+              <div className="h-12 w-full skeleton rounded mt-4" />
+            </div>
+          </>
+        ) : items.length === 0 ? (
+          <div className="md:col-span-2 card border border-neutral-200 bg-white">
+            <EmptyState title="No active announcements" description="Published announcements will show up here for the team." />
+          </div>
+        ) : (
+          items.map((item) => (
+            <article 
+              key={item._id || item.id} 
+              className={`card p-5 shadow-sm transition-all duration-300 border ${
+                item.isPinned 
+                  ? '!bg-black !text-white border-neutral-900 shadow-md' 
+                  : 'hover:shadow-md border-neutral-200 !bg-white !text-black'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <h2 className={`font-black text-base ${item.isPinned ? '!text-white' : '!text-black'}`}>{item.title}</h2>
+                {item.isPinned && <span className="badge !bg-white !text-black border border-white font-bold text-[10px] shrink-0">📌 Pinned</span>}
+              </div>
+              <p className={`text-xs font-medium mt-1 ${item.isPinned ? '!text-neutral-400' : '!text-neutral-500'}`}>{formatDate(item.visibleFrom)}</p>
+              <p className={`text-sm mt-4 whitespace-pre-wrap leading-relaxed ${item.isPinned ? '!text-neutral-200' : '!text-neutral-800'}`}>{item.message || item.content}</p>
+            </article>
+          ))
+        )}
       </div>
     </div>
   )

@@ -49,8 +49,8 @@ export function AuthProvider({children}){
         return () => window.removeEventListener("storage", handleStorageChange)
     }, [])
 
-    const login = async (email, password, role_type) => {
-        const data = unwrap(await api.post("/auth/login", {email, password, role_type}))
+    const login = async (email, password) => {
+        const data = unwrap(await api.post("/auth/login", { email, password }))
         localStorage.setItem("token", data.accessToken || data.token)
         localStorage.setItem("refreshToken", data.refreshToken)
         setToken(data.accessToken || data.token);
@@ -58,10 +58,9 @@ export function AuthProvider({children}){
         return data.user;
     }
 
-    const logout = async ()=>{
+    const logout = async () => {
         const refreshToken = localStorage.getItem("refreshToken");
         const accessToken = localStorage.getItem("token");
-        const isAdmin = user?.role === "ADMIN";
 
         try {
             if (accessToken) {
@@ -80,7 +79,7 @@ export function AuthProvider({children}){
             setLoading(false);
         }
 
-        window.location.assign(isAdmin ? "/login/admin" : "/login/employee");
+        window.location.assign("/login");
     }
     const value = {user, token, loading, login, logout, refreshSession, setUser}
 

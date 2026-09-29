@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import Loading from "../components/Loading"
+import DashboardLoader from "../components/DashboardLoader"
 import { Lock, Smartphone } from "lucide-react"
 import ProfileForm from "../components/ProfileForm"
 import ChangePasswordModal from "../components/ChangePasswordModal"
@@ -84,7 +84,7 @@ const Settings = () => {
 
   useEffect(() => { fetchProfile() }, [fetchProfile])
 
-  if (loading) return <Loading />
+  if (loading) return <DashboardLoader />
 
   return (
     <div className="animate-fade-in space-y-6">

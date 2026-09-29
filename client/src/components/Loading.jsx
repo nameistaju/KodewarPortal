@@ -1,24 +1,27 @@
 import React, { useEffect } from 'react';
 
-const Loading = () => {
+const Loading = ({ onComplete }) => {
   useEffect(() => {
     const el = document.getElementById('kodewar-logo');
     if (!el) return;
-    let timer1, timer2;
+    let timer1;
     function run() {
       if (!el) return;
       el.classList.remove('play', 'out');
       void el.getBoundingClientRect();
       el.classList.add('play');
-      timer1 = setTimeout(() => el?.classList.add('out'), 6200);
-      timer2 = setTimeout(run, 7000);
+      timer1 = setTimeout(() => {
+        el?.classList.add('out');
+        if (onComplete) {
+          setTimeout(onComplete, 400);
+        }
+      }, 6200);
     }
     run();
     return () => {
       clearTimeout(timer1);
-      clearTimeout(timer2);
     };
-  }, []);
+  }, [onComplete]);
 
   return (
     <div className="kodewar-loader-container">
@@ -48,21 +51,24 @@ const Loading = () => {
 
         .kodewar-loader-container svg {
           display: block;
-          width: 100%;
-          height: 100%;
-          max-width: 900px;
-          max-height: 100%;
+          width: min(75vw, 280px);
+          height: auto;
+          max-height: 60vh;
           overflow: visible;
+          margin: auto;
         }
 
         @media (max-width: 700px) {
           :root { --loader-sw: 5; }
+          .kodewar-loader-container svg {
+            width: min(80vw, 240px);
+          }
         }
         @media (max-width: 420px) {
           :root { --loader-sw: 6.5; }
-        }
-        @media (min-width: 1600px) {
-          .kodewar-loader-container svg { max-width: 1100px; }
+          .kodewar-loader-container svg {
+            width: min(85vw, 200px);
+          }
         }
 
         .logo {

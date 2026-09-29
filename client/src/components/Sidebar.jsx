@@ -77,10 +77,19 @@ const Sidebar = () => {
         return (
             <div className="flex flex-col h-full select-none overflow-hidden bg-[#050505] text-white">
                 {/* Brand header */}
-                <div className="pt-6 pb-5 border-b border-neutral-800/80 flex items-center justify-center relative shrink-0">
+                <div className="pt-5 pb-5 border-b border-neutral-800/80 flex items-center justify-center relative shrink-0">
                     <div className={`flex items-center ${showCollapsed ? 'justify-center' : 'justify-between w-full px-5'}`}>
                         <div className="flex items-center gap-3 min-w-0">
-                            <p className={`font-black text-sm text-white tracking-widest uppercase transition-all duration-300 overflow-hidden whitespace-nowrap ${showCollapsed ? 'w-0 opacity-0 ml-0' : 'w-auto opacity-100'}`}>KODEWAR</p>
+                            <img
+                                src="/whitelogo_notext.png"
+                                alt="KODEWAR Logo"
+                                className="h-8 w-auto object-contain shrink-0"
+                            />
+                            {!showCollapsed && (
+                                <p className="font-black text-sm text-white tracking-widest uppercase transition-all duration-300 overflow-hidden whitespace-nowrap">
+                                    KODEWAR
+                                </p>
+                            )}
                         </div>
                         {isMobileView && (
                             <button onClick={()=>setMobileOpen(false)} className='lg:hidden text-neutral-400 hover:text-white p-1 cursor-pointer shrink-0'>

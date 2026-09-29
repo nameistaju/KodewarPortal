@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react"
 import { useOutletContext } from "react-router-dom"
-import Loading from "../components/Loading"
 import { PalmtreeIcon, PlusIcon, ThermometerIcon, UmbrellaIcon } from "lucide-react"
 import LeaveHistory from "../components/leave/LeaveHistory"
 import ApplyLeaveModal from "../components/leave/ApplyLeaveModal"
+import DashboardLoader from "../components/DashboardLoader"
 import { useAuth } from "../context/AuthContext"
 import api from "../api/axios"
 import { toastError, unwrapItems } from "../api/helpers"
@@ -35,7 +35,7 @@ const Leave = () => {
 
   useEffect(()=>{ fetchLeaves() },[fetchLeaves])
 
-  if(loading) return <Loading />
+  if (loading) return <DashboardLoader />
 
   const getRemainingBalance = (type) => {
     if (!user || !user.leaveBalances) return 0;

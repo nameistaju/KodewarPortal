@@ -4,17 +4,20 @@ let inMemoryAnnouncements = [
     id: '1',
     title: 'Welcome to KODEWAR Workforce',
     content: 'All attendance & leave management is now active.',
+    message: 'All attendance & leave management is now active.',
     isPinned: true,
     visibleFrom: new Date().toISOString()
   }
 ];
 
 export const create = async (payload) => {
+  const text = payload.message || payload.content || '';
   const item = {
     _id: String(Date.now()),
     id: String(Date.now()),
     title: payload.title,
-    content: payload.content || payload.message || '',
+    content: text,
+    message: text,
     isPinned: Boolean(payload.isPinned),
     visibleFrom: payload.visibleFrom || new Date().toISOString()
   };

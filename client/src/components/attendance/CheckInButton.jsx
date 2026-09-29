@@ -57,11 +57,25 @@ const StyledSwitchContainer = styled.div`
 
   .switch input:checked + .button {
     transform: translateZ(20px) rotateX(25deg);
-    box-shadow: 0 -10px 20px #ff1818;
+    box-shadow: 0 -10px 25px #10b981, 0 0 15px rgba(16, 185, 129, 0.6);
+    background: linear-gradient(#059669 0%, #047857 30%, #047857 70%, #059669 100%);
+  }
+
+  .switch input:checked + .button::before {
+    background: linear-gradient(rgba(255, 255, 255, 0.8) 10%, rgba(255, 255, 255, 0.3) 30%, #065f46 75%, #064e3b) 50% 50%/97% 97%, #10b981;
+  }
+
+  .switch input:checked + .button::after {
+    background-image: linear-gradient(#065f46, #064e3b);
   }
 
   .switch input:checked + .button .light {
     animation: flicker 0.2s infinite 0.3s;
+    background-image: radial-gradient(#a7f3d0, #10b981 40%, transparent 70%);
+  }
+
+  .switch input:checked + .button .dots {
+    background-image: radial-gradient(transparent 30%, rgba(6, 95, 70, 0.7) 70%);
   }
 
   .switch input:checked + .button .shine {
@@ -282,8 +296,8 @@ const CheckInButton = ({
     <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-sm flex flex-col gap-6 w-full">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-extrabold text-black text-base">Office Attendance Power Control</h3>
-          <p className="text-xs text-neutral-500 mt-0.5">Location-verified 3D power switch clock-in & clock-out</p>
+          <h3 className="font-extrabold text-black text-base uppercase tracking-tight">Office Attendance</h3>
+          <p className="text-xs text-neutral-500 mt-0.5 hidden sm:block">Location-verified 3D power switch clock-in & clock-out</p>
         </div>
 
         {/* Status Badge */}
@@ -335,9 +349,9 @@ const CheckInButton = ({
       </div>
 
       {!isInsideRadius && !isPunchedIn && !isPunchedOut && !loadingCoords && (
-        <div className="flex items-start gap-2 bg-neutral-100 border border-neutral-300 text-neutral-900 p-3 rounded-xl text-xs font-medium">
+        <div className="flex items-start gap-2 bg-neutral-100 border border-neutral-300 text-neutral-900 p-3 rounded-xl text-xs font-semibold">
           <ShieldAlert className="w-4 h-4 text-black shrink-0 mt-0.5" />
-          <span>You must be physically present inside the office radius ({officeRadius || 100}m) to punch in.</span>
+          <span>Move within {officeRadius || 150}m of the office to punch in.</span>
         </div>
       )}
 

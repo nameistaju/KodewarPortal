@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Calendar, Clock, Crosshair, ShieldAlert } from 'lucide-react';
-import Loading from '../components/Loading';
 import CheckInButton from '../components/attendance/CheckInButton';
 import AttendanceStats from '../components/attendance/AttendanceStats';
 import AttendanceHistory from '../components/attendance/AttendanceHistory';
+import DashboardLoader from '../components/DashboardLoader';
 import api from '../api/axios';
 import { toastError, unwrap, unwrapItems } from '../api/helpers';
 import { useAuth } from '../context/AuthContext';
@@ -45,7 +45,7 @@ const Attendance = () => {
   }, [fetchData]);
 
   if (user?.role === 'ADMIN') return <Navigate to="/dashboard" replace />;
-  if (loading) return <Loading />;
+  if (loading) return <DashboardLoader />;
 
   const isPunchedIn = Boolean(todayRecord?.punchIn?.time && !todayRecord?.punchOut?.time);
   const isPunchedOut = Boolean(todayRecord?.punchOut?.time);

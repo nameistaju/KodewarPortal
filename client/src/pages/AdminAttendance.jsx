@@ -6,13 +6,13 @@ import {
   Download,
   Eye,
   FileSpreadsheet,
+  Loader2,
   Search,
   X
 } from "lucide-react"
 import api from "../api/axios"
 import { toastError, unwrap } from "../api/helpers"
 import { useAuth } from "../context/AuthContext"
-import Loading from "../components/Loading"
 import Avatar from "../components/Avatar"
 
 const departments = ["ADMIN", "HR", "IT", "SALES", "MARKETING", "FINANCE", "OPERATIONS"]
@@ -228,7 +228,7 @@ const AdminAttendance = () => {
       {/* Attendance Table */}
       <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm">
         {loading ? (
-          <div className="py-20"><Loading /></div>
+          <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 text-black animate-spin" /></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
@@ -333,7 +333,7 @@ const AdminAttendance = () => {
             </div>
 
             {drawerLoading ? (
-              <Loading />
+              <div className="py-12 flex justify-center"><Loader2 className="w-6 h-6 text-black animate-spin" /></div>
             ) : (
               <div className="space-y-4 text-xs">
                 <div className="flex items-center gap-3 bg-neutral-50 p-3 rounded-xl border border-neutral-200">

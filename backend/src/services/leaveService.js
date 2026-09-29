@@ -21,16 +21,54 @@ const formatLeaveRecord = (row, employeeData = null) => {
 };
 
 export const applyLeave = async (employeeId, payload) => {
-  const startDateStr = String(payload.startDate).slice(0, 10);
-  const endDateStr = String(payload.endDate).slice(0, 10);
+  const startDateStr = String(payload.startDate || payload.start_date).slice(0, 10);
+  const endDateStr = String(payload.endDate || payload.end_date).slice(0, 10);
 
-  if (new Date(endDateStr) < new Date(startDateStr)) {
+  const start = new Date(startDateStr);
+  const end = new Date(endDateStr);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
+  if (end.getTime() < start.getTime()) {
     throw new AppError('End date cannot be earlier than start date', 400);
+  }
+
+  const requestedDays = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+  if (requestedDays > 10) {
+    throw new AppError('Maximum 10 leave days can be applied per month', 400);
+  }
+
+  const reqYear = start.getFullYear();
+  const reqMonth = String(start.getMonth() + 1).padStart(2, '0');
+  const monthStart = `${reqYear}-${reqMonth}-01`;
+  const monthEnd = `${reqYear}-${reqMonth}-31`;
+
+  const { data: monthLeaves } = await supabase
+    .from('leaves')
+    .select('*')
+    .eq('employee_id', employeeId)
+    .in('status', ['pending', 'approved'])
+    .gte('start_date', monthStart)
+    .lte('start_date', monthEnd);
+
+  let usedDaysInMonth = 0;
+  (monthLeaves || []).forEach((row) => {
+    const lStart = new Date(row.start_date);
+    const lEnd = new Date(row.end_date);
+    lStart.setHours(0, 0, 0, 0);
+    lEnd.setHours(0, 0, 0, 0);
+    const count = Math.floor((lEnd.getTime() - lStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    usedDaysInMonth += count;
+  });
+
+  if (usedDaysInMonth + requestedDays > 10) {
+    throw new AppError(`Monthly leave limit reached (Max 10 days per month). You have already applied for ${usedDaysInMonth} day(s) this month.`, 400);
   }
 
   const insertData = {
     employee_id: employeeId,
-    leave_type: String(payload.leaveType || 'casual').toLowerCase(),
+    leave_type: String(payload.leaveType || payload.leave_type || 'casual').toLowerCase(),
     start_date: startDateStr,
     end_date: endDateStr,
     reason: payload.reason || '',
@@ -160,13 +198,18 @@ export const reviewLeaveRequest = async (leaveId, { status }, adminId) => {
 export const getLeaveBalances = async (employeeId) => {
   const { data: emp } = await supabase
     .from('employees')
-    .select('leave_balance_casual, leave_balance_sick')
+    .select('leave_balance_casual, leave_balance_sick, leave_balance_annual')
     .eq('id', employeeId)
     .single();
 
+  const casual = emp?.leave_balance_casual ?? 10;
+  const sick = emp?.leave_balance_sick ?? 10;
+  const annual = emp?.leave_balance_annual ?? 10;
+
   return [
-    { leaveType: 'CASUAL', allocatedDays: 12, availableDays: emp?.leave_balance_casual ?? 12 },
-    { leaveType: 'SICK', allocatedDays: 12, availableDays: emp?.leave_balance_sick ?? 12 }
+    { leaveType: 'CASUAL', allocatedDays: 10, availableDays: casual },
+    { leaveType: 'SICK', allocatedDays: 10, availableDays: sick },
+    { leaveType: 'ANNUAL', allocatedDays: 10, availableDays: annual }
   ];
 };
 

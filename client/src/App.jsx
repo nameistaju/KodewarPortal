@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react"
 import { Toaster } from "react-hot-toast"
 import { Navigate, Route, Routes, useLocation } from "react-router-dom"
 import { AnimatePresence } from "framer-motion"
@@ -17,12 +18,16 @@ import Loading from "./components/Loading"
 import { useAuth } from "./context/AuthContext"
 import ProtectedRoute from "./components/ProtectedRoute"
 
+import DashboardLoader from "./components/DashboardLoader"
+
 const App = () => {
   const location = useLocation()
-  const { loading } = useAuth()
+  const { loading: authLoading } = useAuth()
 
-  if (loading) {
-    return <Loading />
+  const isAuthPage = location.pathname === '/login' || location.pathname.startsWith('/login/')
+
+  if (authLoading) {
+    return isAuthPage ? null : <DashboardLoader />
   }
 
   return (
@@ -30,9 +35,9 @@ const App = () => {
       <Toaster position="top-right" toastOptions={{ duration: 3200, style: { borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 18px 45px rgba(15,23,42,0.10)" } }} />
       <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        <Route path="/login" element={ <LoginLanding/> }/>
-        <Route path="/login/admin" element={ <LoginForm role="admin" title="Admin Portal" subtitle="Sign in to manage the organization"/> }/>
-        <Route path="/login/employee" element={ <LoginForm role="employee" title="Employee Portal" subtitle="Sign in to access your account"/> }/>
+        <Route path="/login" element={<LoginForm />} />
+        <Route path="/login/admin" element={<Navigate to="/login" replace />} />
+        <Route path="/login/employee" element={<Navigate to="/login" replace />} />
 
         <Route path="/change-password" element={<ChangePassword />}/>
 
@@ -45,6 +50,8 @@ const App = () => {
             <Route path="/settings" element={<Settings />}/>
 
             <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+              <Route path="/admin/dashboard" element={<Dashboard />}/>
+              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />}/>
               <Route path="/employees" element={<Employees />}/>
               <Route path="/admin-attendance" element={<AdminAttendance />}/>
               <Route path="/teams" element={<Teams />}/>

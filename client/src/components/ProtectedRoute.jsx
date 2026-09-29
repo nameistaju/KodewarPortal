@@ -1,12 +1,12 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import Loading from "./Loading";
+import DashboardLoader from "./DashboardLoader";
 
 export default function ProtectedRoute({ allowedRoles }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <Loading />;
+    return <DashboardLoader />;
   }
 
   if (!user) {

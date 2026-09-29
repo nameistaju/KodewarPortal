@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js';
 import { todayStatus } from './attendanceService.js';
 import { getHolidays } from './holidayService.js';
+import { list as listAnnouncements } from './announcementService.js';
 import { mapEmployeeFromDb } from '../utils/supabaseHelpers.js';
 import logger from '../utils/logger.js';
 
@@ -79,10 +80,11 @@ export const adminDashboard = async () => {
 };
 
 export const employeeDashboard = async (employeeId) => {
-  const [status, empRow, holidays] = await Promise.all([
+  const [status, empRow, holidays, announcementsData] = await Promise.all([
     todayStatus(employeeId),
     supabase.from('employees').select('*').eq('id', employeeId).single().then((r) => r.data),
-    getHolidays().catch(() => [])
+    getHolidays().catch(() => []),
+    listAnnouncements().catch(() => ({ items: [] }))
   ]);
 
   const user = mapEmployeeFromDb(empRow);
@@ -99,7 +101,7 @@ export const employeeDashboard = async (employeeId) => {
       { leaveType: 'SICK', allocatedDays: 12, availableDays: empRow?.leave_balance_sick ?? 12 }
     ],
     recentActivities: [],
-    announcements: [],
+    announcements: announcementsData?.items || [],
     holidays: (holidays || []).slice(0, 5)
   };
 };

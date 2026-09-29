@@ -3,13 +3,14 @@ import Sidebar from "../components/Sidebar"
 import Avatar from "../components/Avatar"
 import { useAuth } from "../context/AuthContext"
 import { EmployeeTrackingProvider } from '../context/EmployeeTrackingContext'
-import Loading from "../components/Loading"
+import DashboardLoader from "../components/DashboardLoader"
 import api from "../api/axios"
 import { motion, AnimatePresence } from "framer-motion"
 import { useEffect, useState } from "react"
 import {
-  LayoutGrid, Calendar, Users, Settings,
-  Bell, Smartphone, X, Download, ShieldCheck, FileText, User, LogOut
+  LayoutGrid, Calendar, Settings,
+  Bell, Smartphone, X, Download, ShieldCheck, FileText, User, LogOut,
+  MoreHorizontal, Share2
 } from "lucide-react"
 
 const MotionDiv = motion.div
@@ -17,19 +18,20 @@ const MotionDiv = motion.div
 const Layout = () => {
   const { user, loading, token, logout } = useAuth()
   const [showUserDropdown, setShowUserDropdown] = useState(false)
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const [showIosGuide, setShowIosGuide] = useState(false)
   const location = useLocation()
 
   // PWA states
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
-  const [showFloatingButton, setShowFloatingButton] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
   // Notification center state
   const [showNotifications, setShowNotifications] = useState(false)
   const [notifications, setNotifications] = useState([])
 
-  // Fetch real notifications based on role
+  // Fetch notifications
   useEffect(() => {
     if (!token || !user) return;
 
@@ -59,7 +61,6 @@ const Layout = () => {
           }
           setNotifications(list);
         } else {
-          // Employee
           const leavesRes = await api.get('/leaves?limit=5');
           const leaves = leavesRes.data.data.items || [];
 
@@ -94,6 +95,7 @@ const Layout = () => {
   }, [token, user]);
 
   useEffect(() => {
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
     const mobileCheck = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobi|Tablet/i.test(navigator.userAgent) ||
       (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /Macintosh/.test(navigator.userAgent));
     setIsMobile(mobileCheck)
@@ -102,25 +104,25 @@ const Layout = () => {
       e.preventDefault()
       setDeferredPrompt(e)
       window.deferredPWAInstallPrompt = e
-      setShowFloatingButton(true)
+
+      const isDismissed = localStorage.getItem("pwaDismissed") === "true";
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+
+      if (!isDismissed && !isStandalone) {
+        setShowInstallPrompt(true);
+      }
       window.dispatchEvent(new CustomEvent('pwa:installable'))
     }
 
     const handleAppInstalled = () => {
       setDeferredPrompt(null)
       window.deferredPWAInstallPrompt = null
-      setShowFloatingButton(false)
       setShowInstallPrompt(false)
       window.dispatchEvent(new CustomEvent('pwa:installed'))
     }
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
     window.addEventListener("appinstalled", handleAppInstalled)
-
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-    if (isStandalone) {
-      setShowFloatingButton(false)
-    }
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
@@ -130,13 +132,19 @@ const Layout = () => {
 
   const handleInstallApp = async () => {
     const promptEvent = deferredPrompt || window.deferredPWAInstallPrompt
-    if (!promptEvent) return
+    if (!promptEvent) {
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isIOS) {
+        setShowIosGuide(true);
+      }
+      return;
+    }
     promptEvent.prompt()
     const { outcome } = await promptEvent.userChoice
     if (outcome === "accepted") {
       setDeferredPrompt(null)
       window.deferredPWAInstallPrompt = null
-      setShowFloatingButton(false)
+      setShowInstallPrompt(false)
       window.dispatchEvent(new CustomEvent('pwa:installed'))
     }
     setShowInstallPrompt(false)
@@ -147,7 +155,7 @@ const Layout = () => {
     setShowInstallPrompt(false)
   }
 
-  if (loading) return <Loading />
+  if (loading) return <DashboardLoader />
   if (!user) return <Navigate to="/login" />
 
   if ((user.mustChangePassword || user.forcePasswordChange) && location.pathname !== "/change-password") {
@@ -155,21 +163,12 @@ const Layout = () => {
   }
 
   const role = user?.role
-  const mobileNavItems = [
-    ...(role === "ADMIN"
-      ? [
-          { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
-          { name: "Attendance", href: "/admin-attendance", icon: Calendar },
-          { name: "Employees", href: "/employees", icon: Users },
-          { name: "Settings", href: "/settings", icon: Settings }
-        ]
-      : [
-          { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
-          { name: "Attendance", href: "/attendance", icon: Calendar },
-          { name: "Leave", href: "/leave", icon: FileText },
-          { name: "Settings", href: "/settings", icon: Settings }
-        ]
-    )
+
+  // Mobile Bottom Bar Primary Destinations (Home, Attendance, Leave, More)
+  const mobileNavDestinations = [
+    { name: "Home", href: "/dashboard", icon: LayoutGrid },
+    { name: "Attendance", href: role === "ADMIN" ? "/admin-attendance" : "/attendance", icon: Calendar },
+    { name: "Leave", href: "/leave", icon: FileText },
   ]
 
   return (
@@ -181,24 +180,13 @@ const Layout = () => {
       </div>
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Universal Top Navbar */}
-        <header className={`${role === "EMPLOYEE" ? "hidden lg:flex" : "flex"} h-16 border-b border-neutral-200 bg-white/80 backdrop-blur-md items-center justify-between px-6 z-20 sticky top-0 shrink-0`}>
+        {/* Desktop Header */}
+        <header className="hidden lg:flex h-16 border-b border-neutral-200 bg-white/80 backdrop-blur-md items-center justify-between px-6 z-20 sticky top-0 shrink-0">
           <div className="flex items-center gap-4 flex-1">
             <span className="text-base font-black tracking-tight text-black">KODEWAR Workforce</span>
           </div>
 
-          {/* Top Actions Right Side */}
           <div className="flex items-center gap-3">
-            {showFloatingButton && (
-              <button
-                onClick={handleInstallApp}
-                className="hidden md:flex items-center gap-1.5 btn-secondary text-xs py-1.5 px-3 border-neutral-300 hover:bg-neutral-100 text-black font-bold"
-              >
-                <Download className="w-3.5 h-3.5 text-black" />
-                Install App
-              </button>
-            )}
-
             {/* Notification Bell */}
             <div className="relative">
               <button
@@ -209,7 +197,6 @@ const Layout = () => {
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-black ring-2 ring-white" />
               </button>
 
-              {/* Notifications Dropdown Panel */}
               <AnimatePresence>
                 {showNotifications && (
                   <>
@@ -247,8 +234,6 @@ const Layout = () => {
               <button
                 onClick={() => setShowUserDropdown(!showUserDropdown)}
                 className="flex items-center gap-2 pl-2 border-l border-neutral-200 focus:outline-none hover:opacity-80 transition-opacity cursor-pointer text-left"
-                aria-haspopup="true"
-                aria-expanded={showUserDropdown}
               >
                 <Avatar user={user} size="w-8 h-8" rounded="rounded-lg" className="border border-neutral-300 shadow-xs" fallbackClassName="bg-neutral-900 text-white text-xs" />
                 <div className="hidden sm:block text-left">
@@ -312,127 +297,75 @@ const Layout = () => {
           </div>
         </header>
 
-        {role === "EMPLOYEE" && (
-          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-4 lg:hidden">
-            <Link to="/dashboard" className="flex min-h-12 items-center gap-2" aria-label="KODEWAR dashboard">
-              <span className="text-sm font-black tracking-widest text-black uppercase">KODEWAR</span>
-            </Link>
-            <div className="flex items-center gap-1">
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowNotifications((value) => !value)}
-                  className="relative flex h-12 w-12 items-center justify-center rounded-2xl text-neutral-700 active:bg-neutral-100"
-                  aria-label="Open notifications"
-                >
-                  <Bell className="h-5 w-5 text-black" />
-                  <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-black ring-2 ring-white" />
-                </button>
-                <AnimatePresence>
-                  {showNotifications && (
-                    <>
-                      <button type="button" className="fixed inset-0 top-16 z-30 cursor-default" onClick={() => setShowNotifications(false)} aria-label="Close notifications" />
-                      <motion.div
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
-                        transition={{ duration: 0.15 }}
-                        className="fixed left-4 right-4 top-[68px] z-40 max-h-[60vh] overflow-y-auto rounded-[20px] border border-neutral-200 bg-white p-4 shadow-2xl"
-                      >
-                        <div className="mb-2 flex items-center justify-between border-b border-neutral-200 pb-3">
-                          <h2 className="text-sm font-extrabold text-black">Notifications</h2>
-                          <button type="button" onClick={() => setShowNotifications(false)} className="flex h-10 w-10 items-center justify-center rounded-xl text-neutral-500" aria-label="Close notifications"><X className="h-5 w-5" /></button>
-                        </div>
-                        <div className="space-y-1">
-                          {notifications.map((notification) => (
-                            <div key={notification.id} className="rounded-2xl p-3 text-left active:bg-neutral-50 border border-transparent hover:border-neutral-200">
-                              <div className="flex items-start justify-between gap-3">
-                                <p className="text-sm font-bold text-black">{notification.title}</p>
-                                <span className="shrink-0 text-[10px] text-neutral-500">{notification.time}</span>
-                              </div>
-                              <p className="mt-1 text-xs leading-5 text-neutral-600">{notification.desc}</p>
+        {/* Mobile Header (Compact & Clean) */}
+        <header className="flex lg:hidden sticky top-0 z-30 h-14 shrink-0 items-center justify-between border-b border-neutral-200 bg-white/95 backdrop-blur-md px-4">
+          <Link to="/dashboard" className="flex items-center gap-2" aria-label="KODEWAR Home">
+            <span className="text-sm font-black tracking-widest text-black uppercase">KODEWAR</span>
+          </Link>
+
+          <div className="flex items-center gap-1">
+            {/* Notification Bell */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative flex h-10 w-10 items-center justify-center rounded-xl text-neutral-700 active:bg-neutral-100"
+                aria-label="Open notifications"
+              >
+                <Bell className="h-5 w-5 text-black" />
+                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-black ring-2 ring-white" />
+              </button>
+              <AnimatePresence>
+                {showNotifications && (
+                  <>
+                    <button type="button" className="fixed inset-0 top-14 z-30 cursor-default" onClick={() => setShowNotifications(false)} aria-label="Close notifications" />
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.15 }}
+                      className="fixed left-4 right-4 top-16 z-40 max-h-[60vh] overflow-y-auto rounded-[20px] border border-neutral-200 bg-white p-4 shadow-2xl"
+                    >
+                      <div className="mb-2 flex items-center justify-between border-b border-neutral-200 pb-3">
+                        <h2 className="text-sm font-extrabold text-black">Notifications</h2>
+                        <button type="button" onClick={() => setShowNotifications(false)} className="flex h-8 w-8 items-center justify-center rounded-xl text-neutral-500"><X className="h-4 w-4" /></button>
+                      </div>
+                      <div className="space-y-1">
+                        {notifications.map((notification) => (
+                          <div key={notification.id} className="rounded-2xl p-3 text-left active:bg-neutral-50 border border-transparent hover:border-neutral-200">
+                            <div className="flex items-start justify-between gap-3">
+                              <p className="text-sm font-bold text-black">{notification.title}</p>
+                              <span className="shrink-0 text-[10px] text-neutral-500">{notification.time}</span>
                             </div>
-                          ))}
-                        </div>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-              </div>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowUserDropdown(!showUserDropdown)}
-                  className="flex h-12 w-12 items-center justify-center focus:outline-none hover:opacity-80 transition-opacity cursor-pointer"
-                  aria-label="Open user menu"
-                  aria-haspopup="true"
-                  aria-expanded={showUserDropdown}
-                >
-                  <Avatar user={user} size="h-10 w-10" rounded="rounded-2xl" fallbackClassName="bg-black text-white text-sm" />
-                </button>
-
-                <AnimatePresence>
-                  {showUserDropdown && (
-                    <>
-                      <div className="fixed inset-0 z-30 animate-none" onClick={() => setShowUserDropdown(false)} />
-                      <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute right-0 mt-2 w-56 bg-white border border-neutral-200 shadow-2xl rounded-2xl p-2 z-[45]"
-                      >
-                        <div className="flex items-center gap-3 px-3 py-2 border-b border-neutral-200 mb-1">
-                          <Avatar user={user} size="h-10 w-10" className="border border-neutral-300" fallbackClassName="bg-black text-white text-sm" />
-                          <div className="min-w-0">
-                            <p className="truncate text-xs font-bold text-black">{user.name}</p>
-                            <p className="text-[10px] text-neutral-500">{role === "ADMIN" ? "Admin" : "Employee"}</p>
+                            <p className="mt-1 text-xs leading-5 text-neutral-600">{notification.desc}</p>
                           </div>
-                        </div>
-                        <Link
-                          to="/settings"
-                          onClick={() => setShowUserDropdown(false)}
-                          className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-neutral-800 hover:bg-neutral-100 hover:text-black rounded-xl transition-colors"
-                        >
-                          <User className="w-4 h-4 text-black" />
-                          My Profile
-                        </Link>
-                        <Link
-                          to="/settings"
-                          onClick={() => setShowUserDropdown(false)}
-                          className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-neutral-800 hover:bg-neutral-100 hover:text-black rounded-xl transition-colors"
-                        >
-                          <Settings className="w-4 h-4 text-neutral-500" />
-                          Settings
-                        </Link>
-                        <hr className="my-1 border-neutral-200" />
-                        <button
-                          onClick={() => {
-                            setShowUserDropdown(false);
-                            logout();
-                          }}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-neutral-900 hover:bg-neutral-100 rounded-xl transition-colors text-left cursor-pointer"
-                        >
-                          <LogOut className="w-4 h-4 text-neutral-700" />
-                          Logout
-                        </button>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-              </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
-          </header>
-        )}
 
-        {/* Content View Container */}
-        <main className="flex-1 overflow-y-auto relative pb-20 lg:pb-0">
+            {/* Profile Avatar Trigger */}
+            <Link
+              to="/settings"
+              className="flex h-10 w-10 items-center justify-center focus:outline-none hover:opacity-80 transition-opacity cursor-pointer ml-1"
+              aria-label="Profile and Settings"
+            >
+              <Avatar user={user} size="h-8 w-8" rounded="rounded-xl" fallbackClassName="bg-black text-white text-xs" />
+            </Link>
+          </div>
+        </header>
+
+        {/* Main Content Container */}
+        <main className="flex-1 overflow-y-auto relative pb-24 lg:pb-0">
           <MotionDiv
             key={location.pathname}
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
             className="p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto"
           >
             <Outlet />
@@ -440,77 +373,188 @@ const Layout = () => {
         </main>
       </div>
 
-      <nav aria-label="Mobile navigation" className="h-[calc(64px+env(safe-area-inset-bottom))] bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden fixed bottom-0 left-0 right-0 border-t border-neutral-200 flex items-center justify-around px-2 z-35 shadow-xl">
-        {mobileNavItems.map((item) => {
-          const isActive = location.pathname.startsWith(item.href)
+      {/* Fixed Mobile Bottom Navigation Bar ([ Home ] [ Attendance ] [ Leave ] [ More ]) */}
+      <nav aria-label="Mobile bottom navigation" className="h-[calc(60px+env(safe-area-inset-bottom))] bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden fixed bottom-0 left-0 right-0 border-t border-neutral-200 flex items-center justify-around px-2 z-40 shadow-xl">
+        {mobileNavDestinations.map((item) => {
+          const isActive = location.pathname === item.href || (item.href !== "/dashboard" && location.pathname.startsWith(item.href))
           return (
             <Link
               key={item.name}
               to={item.href}
               aria-current={isActive ? "page" : undefined}
               className={`flex min-h-12 flex-1 flex-col items-center justify-center py-1 font-bold transition-colors text-[10px] ${
-                isActive ? "text-black font-extrabold" : "text-neutral-400 hover:text-black"
+                isActive ? "text-black font-extrabold" : "text-neutral-500 hover:text-black"
               }`}
             >
-              <item.icon className={`${role === "EMPLOYEE" ? "h-[22px] w-[22px]" : "h-5 w-5"} mb-0.5 ${isActive ? "text-black" : "text-neutral-400"}`} />
+              <item.icon className={`h-5 w-5 mb-0.5 ${isActive ? "text-black stroke-[2.5]" : "text-neutral-500"}`} />
               <span>{item.name}</span>
             </Link>
           )
         })}
+
+        {/* More Tab Button */}
+        <button
+          onClick={() => setShowMoreMenu(!showMoreMenu)}
+          type="button"
+          className={`flex min-h-12 flex-1 flex-col items-center justify-center py-1 font-bold transition-colors text-[10px] cursor-pointer ${
+            showMoreMenu || location.pathname === "/announcements" || location.pathname === "/settings"
+              ? "text-black font-extrabold"
+              : "text-neutral-500 hover:text-black"
+          }`}
+        >
+          <MoreHorizontal className={`h-5 w-5 mb-0.5 ${showMoreMenu || location.pathname === "/announcements" || location.pathname === "/settings" ? "text-black stroke-[2.5]" : "text-neutral-500"}`} />
+          <span>More</span>
+        </button>
       </nav>
 
-      {/* PWA Floating Install Button (Mobile Only) */}
-      {showFloatingButton && isMobile && role !== "EMPLOYEE" && (
-        <button
-          onClick={handleInstallApp}
-          className="fixed bottom-20 right-4 z-40 p-3 bg-black hover:bg-neutral-800 text-white rounded-full shadow-2xl flex items-center justify-center ring-4 ring-black/10 cursor-pointer"
-        >
-          <Download className="w-5 h-5 text-white" />
-        </button>
-      )}
-
-      {/* Mobile Slide-Up Install App Prompt Overlay */}
+      {/* Mobile "More" Sheet Drawer */}
       <AnimatePresence>
-        {showInstallPrompt && (
+        {showMoreMenu && (
           <>
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-45" onClick={handleDismissPrompt} />
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-45 lg:hidden" onClick={() => setShowMoreMenu(false)} />
             <motion.div
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="fixed bottom-0 left-0 right-0 bg-[#050505] backdrop-blur-xl border-t border-neutral-800 rounded-t-3xl p-6 z-50 shadow-2xl flex flex-col space-y-5 text-white"
+              className="fixed bottom-[calc(60px+env(safe-area-inset-bottom))] left-0 right-0 bg-white border-t border-neutral-200 rounded-t-3xl p-5 z-50 shadow-2xl flex flex-col space-y-2 lg:hidden text-black"
             >
-              <div className="flex justify-between items-start">
-                <div className="flex gap-3">
-                  <div className="p-3 bg-neutral-900 border border-neutral-800 text-white rounded-2xl"><Smartphone className="w-6 h-6" /></div>
-                  <div>
-                    <h3 className="font-extrabold text-white text-base">Install KODEWAR</h3>
-                    <p className="text-xs text-neutral-400 mt-0.5">Add to your home screen for native access.</p>
-                  </div>
-                </div>
-                <button onClick={handleDismissPrompt} className="p-1 text-neutral-400 hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
-              </div>
-
-              <div className="space-y-3 bg-neutral-900/60 p-4 rounded-2xl border border-neutral-800">
-                <div className="flex items-center gap-2.5 text-xs text-neutral-200 font-bold">
-                  <ShieldCheck className="w-4.5 h-4.5 text-white" />
-                  <span>Faster Login & Dashboard Loads</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-xs text-neutral-200 font-bold">
-                  <ShieldCheck className="w-4.5 h-4.5 text-white" />
-                  <span>Better GPS & Geolocation Access</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={handleDismissPrompt} className="btn-secondary py-3 text-sm font-bold">
-                  Not Now
-                </button>
-                <button onClick={handleInstallApp} className="btn-primary py-3 text-sm font-bold rounded-xl">
-                  Install App
+              <div className="flex items-center justify-between pb-3 border-b border-neutral-200 mb-1">
+                <span className="text-xs font-black uppercase tracking-wider text-neutral-500">More Destinations</span>
+                <button onClick={() => setShowMoreMenu(false)} className="p-1 text-neutral-400 hover:text-black cursor-pointer">
+                  <X className="w-5 h-5" />
                 </button>
               </div>
+
+              {role === "ADMIN" && (
+                <>
+                  <Link
+                    to="/employees"
+                    onClick={() => setShowMoreMenu(false)}
+                    className="flex items-center gap-3 p-3 font-bold text-xs text-black hover:bg-neutral-100 rounded-xl transition-colors"
+                  >
+                    <User className="w-4.5 h-4.5 text-black" />
+                    <span>Employees</span>
+                  </Link>
+                  <Link
+                    to="/teams"
+                    onClick={() => setShowMoreMenu(false)}
+                    className="flex items-center gap-3 p-3 font-bold text-xs text-black hover:bg-neutral-100 rounded-xl transition-colors"
+                  >
+                    <User className="w-4.5 h-4.5 text-black" />
+                    <span>Teams</span>
+                  </Link>
+                </>
+              )}
+
+              <Link
+                to="/announcements"
+                onClick={() => setShowMoreMenu(false)}
+                className="flex items-center gap-3 p-3 font-bold text-xs text-black hover:bg-neutral-100 rounded-xl transition-colors"
+              >
+                <Bell className="w-4.5 h-4.5 text-black" />
+                <span>Announcements</span>
+              </Link>
+
+              <Link
+                to="/settings"
+                onClick={() => setShowMoreMenu(false)}
+                className="flex items-center gap-3 p-3 font-bold text-xs text-black hover:bg-neutral-100 rounded-xl transition-colors"
+              >
+                <Settings className="w-4.5 h-4.5 text-black" />
+                <span>Profile & Settings</span>
+              </Link>
+
+              <button
+                onClick={() => {
+                  setShowMoreMenu(false);
+                  logout();
+                }}
+                className="flex items-center gap-3 p-3 font-bold text-xs text-black hover:bg-neutral-100 rounded-xl transition-colors w-full text-left cursor-pointer"
+              >
+                <LogOut className="w-4.5 h-4.5 text-black" />
+                <span>Logout</span>
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* PWA Mobile Install Banner */}
+      <AnimatePresence>
+        {showInstallPrompt && isMobile && (
+          <motion.div
+            initial={{ y: "100%", opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "100%", opacity: 0 }}
+            transition={{ type: "spring", damping: 25, stiffness: 220 }}
+            className="fixed bottom-[calc(70px+env(safe-area-inset-bottom))] left-4 right-4 bg-black text-white border border-neutral-800 rounded-2xl p-4 z-50 shadow-2xl flex flex-col space-y-3"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex gap-3">
+                <div className="p-2.5 bg-neutral-900 border border-neutral-800 rounded-xl shrink-0">
+                  <Smartphone className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm text-white">Install KODEWAR</h4>
+                  <p className="text-xs text-neutral-400 mt-0.5">Get faster access to attendance, leave and announcements.</p>
+                </div>
+              </div>
+              <button onClick={handleDismissPrompt} className="p-1 text-neutral-500 hover:text-white cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={handleInstallApp}
+                className="flex-1 bg-white text-black font-extrabold py-2 text-xs rounded-xl hover:bg-neutral-200 transition-colors cursor-pointer"
+              >
+                Install App
+              </button>
+              <button
+                onClick={handleDismissPrompt}
+                className="px-4 bg-neutral-900 border border-neutral-800 text-neutral-300 font-bold py-2 text-xs rounded-xl hover:text-white transition-colors cursor-pointer"
+              >
+                Later
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* iOS Safari Installation Instructions Sheet */}
+      <AnimatePresence>
+        {showIosGuide && (
+          <>
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50" onClick={() => setShowIosGuide(false)} />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 220 }}
+              className="fixed bottom-0 left-0 right-0 bg-black text-white border-t border-neutral-800 rounded-t-3xl p-6 z-55 shadow-2xl flex flex-col space-y-4"
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
+                <h3 className="font-extrabold text-base text-white">Install KODEWAR on iOS</h3>
+                <button onClick={() => setShowIosGuide(false)} className="p-1 text-neutral-400 hover:text-white cursor-pointer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-xs text-neutral-300">To install KODEWAR on your iPhone or iPad:</p>
+              <div className="space-y-2 bg-neutral-900 p-4 rounded-xl border border-neutral-800 text-xs">
+                <div className="flex items-center gap-2">
+                  <Share2 className="w-4 h-4 text-white shrink-0" />
+                  <span>1. Tap the <strong>Share</strong> button in Safari toolbar.</span>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <Download className="w-4 h-4 text-white shrink-0" />
+                  <span>2. Scroll down and tap <strong>Add to Home Screen</strong>.</span>
+                </div>
+              </div>
+              <button onClick={() => setShowIosGuide(false)} className="btn-primary py-2.5 text-xs font-bold rounded-xl w-full cursor-pointer">
+                Got it
+              </button>
             </motion.div>
           </>
         )}

@@ -1,52 +1,67 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeftIcon, EyeIcon, EyeOffIcon, Loader2Icon, MailIcon, LockIcon } from 'lucide-react'
+import { Navigate, useNavigate } from 'react-router-dom'
+import { EyeIcon, EyeOffIcon, Loader2Icon, MailIcon, LockIcon } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 import { getErrorMessage } from '../api/helpers'
 import styled from 'styled-components'
+import Loading from './Loading'
 
-const LoginForm = ({ role }) => {
+const LoginForm = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
+  const [targetPath, setTargetPath] = useState(null)
+  const { user, login } = useAuth()
   const navigate = useNavigate()
+
+  // If already logged in, redirect based on verified user role
+  if (user) {
+    const target = (user.mustChangePassword || user.forcePasswordChange)
+      ? '/change-password'
+      : (user.role === 'ADMIN' ? '/admin/dashboard' : '/dashboard')
+    return <Navigate to={target} replace />
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     try {
-      const user = await login(email, password, role)
-      navigate(user?.mustChangePassword || user?.forcePasswordChange ? '/change-password' : '/dashboard')
+      const authUser = await login(email, password)
+      const mustChange = authUser?.mustChangePassword || authUser?.forcePasswordChange
+      const path = mustChange
+        ? '/change-password'
+        : (authUser?.role === 'ADMIN' ? '/admin/dashboard' : '/dashboard')
+      setTargetPath(path)
+      setIsLoggingIn(true)
     } catch (error) {
-      toast.error(getErrorMessage(error))
-    } finally {
+      toast.error(getErrorMessage(error) || 'Invalid email or password.')
       setLoading(false)
     }
   }
 
-  const isAdmin = role === 'admin'
+  const handleForgotPassword = (e) => {
+    e.preventDefault()
+    toast.info('Please contact your system administrator to reset your password.')
+  }
+
+  if (isLoggingIn) {
+    return <Loading onComplete={() => navigate(targetPath || '/dashboard')} />
+  }
 
   return (
     <BackgroundContainer>
       <CardWrapper className="animate-fade-in">
         <GlassCard className="text-left">
-          <BackLink to="/login">
-            <ArrowLeftIcon size={14} /> Back to portals
-          </BackLink>
-
           <CardHeader>
-            <BrandTitleContainer>
-              <BrandWordmark>KODEWAR</BrandWordmark>
-              <ProductSubtitle>WORKFORCE</ProductSubtitle>
-            </BrandTitleContainer>
-
-            <WelcomeTitle>{isAdmin ? 'Admin Portal' : 'Welcome Back'}</WelcomeTitle>
-            <WelcomeSubTitle>
-              {isAdmin ? 'Sign in to manage organization' : 'Sign in to access your employee account'}
-            </WelcomeSubTitle>
+            <LogoImage
+              src="/whiteLogo.png"
+              alt="KODEWAR Logo"
+            />
+            <WelcomeTitle>Sign In</WelcomeTitle>
+            <WelcomeSubTitle>Enter your credentials to access your account</WelcomeSubTitle>
           </CardHeader>
 
           <FormContainer onSubmit={handleSubmit}>
@@ -64,7 +79,8 @@ const LoginForm = ({ role }) => {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoComplete="email"
-                  placeholder={isAdmin ? 'admin@company.com' : 'employee@company.com'}
+                  placeholder="name@company.com"
+                  disabled={loading}
                 />
               </NeumorphicInputWrapper>
             </FieldGroup>
@@ -84,6 +100,7 @@ const LoginForm = ({ role }) => {
                   required
                   autoComplete="current-password"
                   placeholder="••••••••••••"
+                  disabled={loading}
                 />
                 <EyeButton
                   type="button"
@@ -96,11 +113,21 @@ const LoginForm = ({ role }) => {
               </NeumorphicInputWrapper>
             </FieldGroup>
 
+            <ForgotPasswordRow>
+              <ForgotPasswordButton type="button" onClick={handleForgotPassword}>
+                Forgot password?
+              </ForgotPasswordButton>
+            </ForgotPasswordRow>
+
             <SubmitButton type="submit" disabled={loading}>
               {loading ? (
-                <Loader2Icon className="animate-spin h-5 w-5 mr-2 text-black" />
-              ) : null}
-              <span>Sign In</span>
+                <>
+                  <Loader2Icon className="animate-spin h-5 w-5 mr-2 text-black" />
+                  <span>Signing in...</span>
+                </>
+              ) : (
+                <span>Sign In</span>
+              )}
             </SubmitButton>
           </FormContainer>
         </GlassCard>
@@ -110,71 +137,42 @@ const LoginForm = ({ role }) => {
 }
 
 const BackgroundContainer = styled.div`
-  height: 100vh;
-  width: 100%;
+  min-height: 100vh;
+  width: 100vw;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
   box-sizing: border-box;
+  background-image: url('/bgforLogin_mobile.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  background-image: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)), url('/bgforLogin_mobile.png');
-  filter: grayscale(100%);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 
   @media (min-width: 768px) {
-    background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('/bgforLogin_desktop.png');
-    background-position: right center;
+    background-image: url('/bgforLogin_desktop.png');
+    background-position: center;
     justify-content: flex-start;
-    padding-left: 8%;
-    padding: 24px;
+    padding-left: 7%;
+    padding-right: 24px;
   }
 `
 
 const CardWrapper = styled.div`
   position: relative;
-  width: 100%;
-  max-width: 420px;
-  border-radius: 26px;
-  padding: 1.5px;
-  background: transparent;
-  overflow: hidden;
+  width: min(92%, 420px);
+  margin: 0 auto;
   display: flex;
   justify-content: center;
   align-items: center;
+  z-index: 10;
 
   @media (min-width: 768px) {
+    width: 100%;
     max-width: 440px;
-  }
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: conic-gradient(
-      transparent,
-      rgba(255, 255, 255, 0.15),
-      rgba(255, 255, 255, 0.5),
-      #ffffff,
-      transparent 60%
-    );
-    animation: rotateMonochromeGlow 6s linear infinite;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  @keyframes rotateMonochromeGlow {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
+    margin: 0;
   }
 `
 
@@ -182,35 +180,18 @@ const GlassCard = styled.div`
   position: relative;
   z-index: 1;
   width: 100%;
-  background: #0a0a0a;
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 24px;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.1);
-  padding: 24px 20px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+  padding: 28px 24px;
   box-sizing: border-box;
   color: #ffffff;
 
   @media (min-width: 768px) {
-    padding: 32px 28px;
-  }
-`
-
-const BackLink = styled(Link)`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #b0b0b0;
-  font-family: 'Poppins', 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  text-decoration: none;
-  margin-bottom: 16px;
-  transition: color 0.2s ease;
-
-  &:hover {
-    color: #ffffff;
+    padding: 36px 30px;
   }
 `
 
@@ -222,6 +203,18 @@ const CardHeader = styled.div`
   margin-bottom: 24px;
 `
 
+const LogoImage = styled.img`
+  height: 44px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 12px;
+  mix-blend-mode: screen;
+
+  @media (min-width: 768px) {
+    height: 52px;
+  }
+`
+
 const BrandTitleContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -231,12 +224,11 @@ const BrandTitleContainer = styled.div`
 
 const BrandWordmark = styled.span`
   font-family: 'Poppins', 'Inter', sans-serif;
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 800;
   color: #ffffff;
   letter-spacing: 0.18em;
   line-height: 1;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 `
 
 const ProductSubtitle = styled.span`
@@ -244,28 +236,28 @@ const ProductSubtitle = styled.span`
   font-size: 10px;
   font-weight: 600;
   color: #999999;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.28em;
   margin-top: 4px;
   text-transform: uppercase;
 `
 
 const WelcomeTitle = styled.h1`
   font-family: 'Poppins', 'Inter', sans-serif;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: #ffffff;
-  margin: 0;
-  letter-spacing: -0.02em;
+  margin: 4px 0 0;
+  letter-spacing: -0.01em;
 
   @media (min-width: 768px) {
-    font-size: 24px;
+    font-size: 22px;
   }
 `
 
 const WelcomeSubTitle = styled.p`
   font-family: 'Poppins', 'Inter', sans-serif;
-  font-size: 13px;
-  color: #afafaf;
+  font-size: 12px;
+  color: #a3a3a3;
   margin-top: 4px;
   margin-bottom: 0;
 `
@@ -288,7 +280,7 @@ const Label = styled.label`
   font-weight: 600;
   color: #cccccc;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
 `
 
 const NeumorphicInputWrapper = styled.div`
@@ -296,16 +288,15 @@ const NeumorphicInputWrapper = styled.div`
   width: 100%;
   display: flex;
   align-items: center;
-  background: #151515;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #141414;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
-  box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.6), inset -2px -2px 6px rgba(255, 255, 255, 0.02);
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
 
   &:focus-within {
-    border-color: rgba(255, 255, 255, 0.5);
-    box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 3px rgba(255, 255, 255, 0.15);
-    background: #1c1c1c;
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+    background: #1a1a1a;
   }
 
   &:hover:not(:focus-within) {
@@ -315,7 +306,7 @@ const NeumorphicInputWrapper = styled.div`
 
 const IconContainer = styled.div`
   padding-left: 14px;
-  color: #999999;
+  color: #888888;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -334,7 +325,7 @@ const StyledInput = styled.input`
   font-weight: 500;
 
   &::placeholder {
-    color: #777777;
+    color: #666666;
   }
 
   &:focus {
@@ -345,7 +336,7 @@ const StyledInput = styled.input`
 const EyeButton = styled.button`
   background: none;
   border: none;
-  color: #999999;
+  color: #888888;
   cursor: pointer;
   padding: 0 14px;
   display: flex;
@@ -358,10 +349,33 @@ const EyeButton = styled.button`
   }
 `
 
+const ForgotPasswordRow = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -6px;
+`
+
+const ForgotPasswordButton = styled.button`
+  background: none;
+  border: none;
+  color: #999999;
+  font-family: 'Poppins', 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: #ffffff;
+    text-decoration: underline;
+  }
+`
+
 const SubmitButton = styled.button`
   width: 100%;
   padding: 13px;
-  margin-top: 8px;
+  margin-top: 4px;
   background: #ffffff;
   border: none;
   border-radius: 14px;
@@ -374,12 +388,12 @@ const SubmitButton = styled.button`
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.12);
 
   &:hover:not(:disabled) {
     background: #e5e5e5;
     color: #000000;
-    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.25);
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
   }
 
   &:active:not(:disabled) {

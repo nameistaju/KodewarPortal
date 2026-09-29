@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import api from "../api/axios";
 import { getErrorMessage, unwrap } from "../api/helpers";
 import { useAuth } from "../context/AuthContext";
-import Loading from "../components/Loading";
+import DashboardLoader from "../components/DashboardLoader";
 
 const ChangePassword = () => {
   const { user, loading, refreshSession, setUser } = useAuth();
@@ -15,7 +15,7 @@ const ChangePassword = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const navigate = useNavigate();
 
-  if (loading) return <Loading />;
+  if (loading) return <DashboardLoader />;
   if (!user) return <Navigate to="/login" replace />;
   if (!user.mustChangePassword && !user.forcePasswordChange) return <Navigate to="/dashboard" replace />;
 
