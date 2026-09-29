@@ -11,14 +11,14 @@
     "show-bootstrap-users": "node scripts/showBootstrapUsers.js",
     "seed-users": "node scripts/seedAdminAndEmployee.js",
     "seed": "node scripts/seedDatabase.js",
-    "test": "node --test test/*.test.js",
-    "migrate:indexes": "node scripts/prepareProductionIndexes.js"
+    "test": "node --test test/*.test.js"
   },
   "keywords": [
     "kodewar",
     "workforce",
     "express",
-    "mongodb"
+    "supabase",
+    "postgresql"
   ],
   "author": "KODEWAR",
   "license": "ISC",

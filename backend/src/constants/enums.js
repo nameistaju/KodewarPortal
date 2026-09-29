@@ -61,3 +61,9 @@ export const ATTENDANCE_CORRECTION_TYPES = Object.freeze({
   FORGOT_SELFIE: 'Forgot Selfie',
   WRONG_WORK_MODE: 'Wrong Work Mode'
 });
+
+export const TEAM_STATUS = Object.freeze({
+  ACTIVE: 'ACTIVE',
+  ARCHIVED: 'ARCHIVED'
+});
+

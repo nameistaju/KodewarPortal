@@ -1,6 +1,6 @@
-﻿import { z } from 'zod';
+import { z } from 'zod';
 import { objectId, paginationQuerySchema } from './commonValidator.js';
-import { TEAM_STATUS } from '../models/Team.js';
+import { TEAM_STATUS } from '../constants/index.js';
 
 const optionalText = (max = 1000) => z.preprocess(
   (value) => (value === '' || value === null ? undefined : value),

@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-process.env.MONGODB_URI ||= 'mongodb://127.0.0.1:27017/sharpkode-test';
 process.env.JWT_SECRET ||= 'test-access-secret-at-least-32-chars-long';
 process.env.JWT_REFRESH_SECRET ||= 'test-refresh-secret-at-least-32-chars-long';
 process.env.ORGANIZATION_TIMEZONE = 'Asia/Kolkata';

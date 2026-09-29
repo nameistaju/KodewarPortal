@@ -3,7 +3,7 @@ import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
-import mongoose from 'mongoose';
+import { supabase } from './config/supabase.js';
 import { env, isProduction } from './config/env.js';
 import authRoutes from './routes/authRoutes.js';
 import employeeRoutes from './routes/employeeRoutes.js';
@@ -22,18 +22,23 @@ const app = express();
 
 app.get('/api/health', async (req, res) => {
   const startTime = process.hrtime();
-  let mongoStatus = 'DISCONNECTED';
+  let dbStatus = 'DISCONNECTED';
   let activeEmployees = 0;
 
   try {
-    if (mongoose.connection.readyState === 1) {
-      await mongoose.connection.db.admin().ping();
-      mongoStatus = 'CONNECTED';
-      const Employee = mongoose.model('Employee');
-      activeEmployees = await Employee.countDocuments({ status: 'ACTIVE' });
+    const { count, error } = await supabase
+      .from('employees')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_active', true);
+
+    if (!error) {
+      dbStatus = 'CONNECTED';
+      activeEmployees = count || 0;
+    } else {
+      dbStatus = 'ERROR';
     }
   } catch {
-    mongoStatus = 'ERROR';
+    dbStatus = 'ERROR';
   }
 
   const diff = process.hrtime(startTime);
@@ -42,7 +47,7 @@ app.get('/api/health', async (req, res) => {
   res.status(200).json({
     success: true,
     status: 'UP',
-    mongoStatus,
+    dbStatus,
     uptime: process.uptime(),
     version: '1.0.0',
     timestamp: new Date().toISOString(),
@@ -141,8 +146,14 @@ app.get('/health', (_req, res) => {
   });
 });
 
-app.get('/ready', (_req, res) => {
-  const ready = mongoose.connection.readyState === 1;
+app.get('/ready', async (_req, res) => {
+  let ready = false;
+  try {
+    const { error } = await supabase.from('employees').select('id', { count: 'exact', head: true });
+    ready = !error;
+  } catch {
+    ready = false;
+  }
 
   res.status(ready ? 200 : 503).json({
     success: ready,
