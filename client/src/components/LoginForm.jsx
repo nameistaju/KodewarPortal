@@ -31,80 +31,82 @@ const LoginForm = ({ role }) => {
 
   return (
     <BackgroundContainer>
-      <GlassCard className="animate-fade-in text-left">
-        <BackLink to="/login">
-          <ArrowLeftIcon size={14} /> Back to portals
-        </BackLink>
+      <CardWrapper className="animate-fade-in">
+        <GlassCard className="text-left">
+          <BackLink to="/login">
+            <ArrowLeftIcon size={14} /> Back to portals
+          </BackLink>
 
-        <CardHeader>
-          <LogoWrapper>
-            <img
-              src={isAdmin ? '/adminLOGO.png' : '/EmployeeLOGO.png'}
-              alt="SharpKode Logo"
-              className="logo-img"
-            />
-          </LogoWrapper>
-          <WelcomeTitle>{isAdmin ? 'Admin Portal' : 'Welcome Back'}</WelcomeTitle>
-          <WelcomeSubTitle>
-            {isAdmin ? 'Sign in to manage organization' : 'Sign in to access your employee account'}
-          </WelcomeSubTitle>
-        </CardHeader>
-
-        <FormContainer onSubmit={handleSubmit}>
-          <FieldGroup>
-            <Label htmlFor="login-email">Email Address</Label>
-            <NeumorphicInputWrapper>
-              <IconContainer>
-                <MailIcon size={18} />
-              </IconContainer>
-              <StyledInput
-                id="login-email"
-                name="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                placeholder={isAdmin ? 'admin@sharpkode.com' : 'employee@sharpkode.com'}
+          <CardHeader>
+            <LogoWrapper>
+              <img
+                src={isAdmin ? '/adminLOGO.png' : '/EmployeeLOGO.png'}
+                alt="SharpKode Logo"
+                className="logo-img"
               />
-            </NeumorphicInputWrapper>
-          </FieldGroup>
+            </LogoWrapper>
+            <WelcomeTitle>{isAdmin ? 'Admin Portal' : 'Welcome Back'}</WelcomeTitle>
+            <WelcomeSubTitle>
+              {isAdmin ? 'Sign in to manage organization' : 'Sign in to access your employee account'}
+            </WelcomeSubTitle>
+          </CardHeader>
 
-          <FieldGroup>
-            <Label htmlFor="login-password">Password</Label>
-            <NeumorphicInputWrapper>
-              <IconContainer>
-                <LockIcon size={18} />
-              </IconContainer>
-              <StyledInput
-                id="login-password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                placeholder="••••••••••••"
-              />
-              <EyeButton
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                title={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
-              </EyeButton>
-            </NeumorphicInputWrapper>
-          </FieldGroup>
+          <FormContainer onSubmit={handleSubmit}>
+            <FieldGroup>
+              <Label htmlFor="login-email">Email Address</Label>
+              <NeumorphicInputWrapper>
+                <IconContainer>
+                  <MailIcon size={18} />
+                </IconContainer>
+                <StyledInput
+                  id="login-email"
+                  name="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  placeholder={isAdmin ? 'admin@sharpkode.com' : 'employee@sharpkode.com'}
+                />
+              </NeumorphicInputWrapper>
+            </FieldGroup>
 
-          <SubmitButton type="submit" disabled={loading}>
-            {loading ? (
-              <Loader2Icon className="animate-spin h-5 w-5 mr-2" />
-            ) : null}
-            <span>Sign In</span>
-          </SubmitButton>
-        </FormContainer>
-      </GlassCard>
+            <FieldGroup>
+              <Label htmlFor="login-password">Password</Label>
+              <NeumorphicInputWrapper>
+                <IconContainer>
+                  <LockIcon size={18} />
+                </IconContainer>
+                <StyledInput
+                  id="login-password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  placeholder="••••••••••••"
+                />
+                <EyeButton
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+                </EyeButton>
+              </NeumorphicInputWrapper>
+            </FieldGroup>
+
+            <SubmitButton type="submit" disabled={loading}>
+              {loading ? (
+                <Loader2Icon className="animate-spin h-5 w-5 mr-2" />
+              ) : null}
+              <span>Sign In</span>
+            </SubmitButton>
+          </FormContainer>
+        </GlassCard>
+      </CardWrapper>
     </BackgroundContainer>
   )
 }
@@ -132,21 +134,64 @@ const BackgroundContainer = styled.div`
   }
 `
 
-const GlassCard = styled.div`
+const CardWrapper = styled.div`
+  position: relative;
   width: 100%;
   max-width: 420px;
-  background: rgba(15, 23, 42, 0.75);
+  border-radius: 28px;
+  padding: 2px;
+  background: transparent;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  @media (min-width: 768px) {
+    max-width: 440px;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(
+      transparent,
+      rgba(255, 255, 255, 0.4),
+      #2ea8ff,
+      transparent 60%
+    );
+    animation: rotateGlow 6s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  @keyframes rotateGlow {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+`
+
+const GlassCard = styled.div`
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 28px;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  border-radius: 26px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.15);
   padding: 24px 20px;
   box-sizing: border-box;
   color: #ffffff;
 
   @media (min-width: 768px) {
-    max-width: 440px;
     padding: 32px 28px;
   }
 `
