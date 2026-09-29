@@ -22,15 +22,16 @@ const StyledSwitchContainer = styled.div`
   .switch {
     display: block;
     background-color: black;
-    width: 120px;
-    height: 156px;
-    box-shadow: 0 0 10px 2px rgba(0, 0, 0, 0.2), 0 0 1px 2px black, inset 0 2px 2px -2px white, inset 0 0 2px 12px #47434c, inset 0 0 2px 18px black;
+    width: 140px;
+    height: 180px;
+    box-shadow: 0 0 10px 2px rgba(0, 0, 0, 0.2), 0 0 1px 2px black, inset 0 2px 2px -2px white, inset 0 0 2px 14px #47434c, inset 0 0 2px 20px black;
     border-radius: 6px;
-    padding: 16px;
+    padding: 18px;
     perspective: 700px;
     cursor: pointer;
     position: relative;
     transition: opacity 0.2s ease, transform 0.2s ease;
+    overflow: hidden;
 
     &.disabled {
       cursor: not-allowed;
@@ -79,6 +80,7 @@ const StyledSwitchContainer = styled.div`
     transform-style: preserve-3d;
     background-color: #9b0621;
     height: 100%;
+    width: 100%;
     position: relative;
     cursor: pointer;
     background: linear-gradient(#980000 0%, #6f0000 30%, #6f0000 70%, #980000 100%);
@@ -91,23 +93,25 @@ const StyledSwitchContainer = styled.div`
     background: linear-gradient(rgba(255, 255, 255, 0.8) 10%, rgba(255, 255, 255, 0.3) 30%, #650000 75%, #320000) 50% 50%/97% 97%, #b10000;
     background-repeat: no-repeat;
     width: 100%;
-    height: 40px;
-    transform-origin: top;
+    height: 30px;
+    transform-origin: top center;
     transform: rotateX(-90deg);
     position: absolute;
     top: 0;
+    left: 0;
   }
 
   .switch .button::after {
     content: "";
     background-image: linear-gradient(#650000, #320000);
     width: 100%;
-    height: 40px;
-    transform-origin: top;
-    transform: translateY(40px) rotateX(-90deg);
+    height: 30px;
+    transform-origin: bottom center;
+    transform: rotateX(90deg);
     position: absolute;
     bottom: 0;
-    box-shadow: 0 40px 8px 0px black, 0 60px 20px 0px rgba(0, 0, 0, 0.5);
+    left: 0;
+    box-shadow: 0 30px 8px 0px black, 0 40px 20px 0px rgba(0, 0, 0, 0.5);
   }
 
   .switch .light {

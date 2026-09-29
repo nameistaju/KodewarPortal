@@ -55,7 +55,7 @@ export const applyLeave = async (employeeId, payload) => {
 export const getLeaveRequests = async (requestUser, query = {}) => {
   let builder = supabase
     .from('leaves')
-    .select('*, employees!inner(id, name, email, department)', { count: 'exact' });
+    .select('*, employees!employee_id(id, name, email, department)', { count: 'exact' });
 
   if (requestUser.role === 'EMPLOYEE') {
     builder = builder.eq('employee_id', requestUser.id || requestUser._id);
@@ -210,4 +210,3 @@ export const cancel = async (leaveId, employeeId) => {
 
   return formatLeaveRecord(updatedRow);
 };
-

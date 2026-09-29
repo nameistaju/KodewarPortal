@@ -243,7 +243,7 @@ export const todayStatus = async (employeeId) => {
 export const history = async (requestUser, query = {}) => {
   let builder = supabase
     .from('attendance')
-    .select('*, employees!inner(id, name, email, department)', { count: 'exact' });
+    .select('*, employees!employee_id(id, name, email, department)', { count: 'exact' });
 
   if (requestUser.role === 'EMPLOYEE') {
     builder = builder.eq('employee_id', requestUser.id || requestUser._id);
@@ -408,7 +408,7 @@ export const adminAttendanceCenter = async (query = {}) => {
 export const adminAttendanceDetail = async (attendanceId) => {
   const { data: row, error } = await supabase
     .from('attendance')
-    .select('*, employees!inner(id, name, email, department)')
+    .select('*, employees!employee_id(id, name, email, department)')
     .eq('id', attendanceId)
     .single();
 
