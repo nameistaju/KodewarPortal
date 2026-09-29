@@ -1,7 +1,7 @@
 {
-  "name": "SharpKode",
-  "short_name": "SharpKode",
-  "description": "Premium management platform for SharpKode.",
+  "name": "KODEWAR Workforce",
+  "short_name": "KODEWAR",
+  "description": "Internal attendance and leave portal for KODEWAR Workforce.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#071426",

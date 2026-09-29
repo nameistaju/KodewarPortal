@@ -1,42 +1,51 @@
 import React from 'react'
-import { Navigate, Link } from "react-router-dom"
-import { useAuth } from "../context/AuthContext"
-import Loading from "../components/Loading"
+import { Navigate, Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import Loading from '../components/Loading'
 import styled from 'styled-components'
 
 const LoginLanding = () => {
-    const { user, loading } = useAuth()
+  const { user, loading } = useAuth()
 
-    if (loading) return <Loading />
-    if (user) return <Navigate to={user.mustChangePassword || user.forcePasswordChange ? "/change-password" : "/dashboard"} />
+  if (loading) return <Loading />
+  if (user) return <Navigate to={user.mustChangePassword || user.forcePasswordChange ? '/change-password' : '/dashboard'} />
 
-    return (
-        <BackgroundContainer>
-            <HeaderSection>
-                <img src="/whiteLogo.png" alt="SharpKode Logo" className="h-12 sm:h-14 w-auto object-contain mb-5 float-animation" style={{ mixBlendMode: 'screen' }} />
-                <HeroTitle>SharpKode</HeroTitle>
-                <SubTitle>Modern Enterprise Platform</SubTitle>
-            </HeaderSection>
+  return (
+    <BackgroundContainer>
+      <HeaderSection>
+        <img
+          src="/whiteLogo.png"
+          alt="KODEWAR Logo"
+          className="h-12 sm:h-14 w-auto object-contain mb-4 float-animation"
+          style={{ mixBlendMode: 'screen' }}
+        />
+        <HeroTitle>KODEWAR</HeroTitle>
+        <SubTitle>WORKFORCE MANAGEMENT</SubTitle>
+      </HeaderSection>
 
-            <CardsContainer>
-                <PortalCard to="/login/admin" className="group">
-                    <LogoWrapper>
-                        <img src="/adminLOGO.png" alt="Admin Portal Logo" className="portal-logo" />
-                    </LogoWrapper>
-                    <PortalTag>ADMIN</PortalTag>
-                    <ActionText>Continue <span className="arrow">→</span></ActionText>
-                </PortalCard>
+      <CardsContainer>
+        <PortalCard to="/login/admin" className="group">
+          <LogoWrapper>
+            <img src="/adminLOGO.png" alt="Admin Portal Logo" className="portal-logo" />
+          </LogoWrapper>
+          <PortalTag>ADMIN</PortalTag>
+          <ActionText>
+            Continue <span className="arrow">→</span>
+          </ActionText>
+        </PortalCard>
 
-                <PortalCard to="/login/employee" className="group">
-                    <LogoWrapper>
-                        <img src="/EmployeeLOGO.png" alt="Employee Portal Logo" className="portal-logo" />
-                    </LogoWrapper>
-                    <PortalTag>EMPLOYEE</PortalTag>
-                    <ActionText>Continue <span className="arrow">→</span></ActionText>
-                </PortalCard>
-            </CardsContainer>
-        </BackgroundContainer>
-    )
+        <PortalCard to="/login/employee" className="group">
+          <LogoWrapper>
+            <img src="/EmployeeLOGO.png" alt="Employee Portal Logo" className="portal-logo" />
+          </LogoWrapper>
+          <PortalTag>EMPLOYEE</PortalTag>
+          <ActionText>
+            Continue <span className="arrow">→</span>
+          </ActionText>
+        </PortalCard>
+      </CardsContainer>
+    </BackgroundContainer>
+  )
 }
 
 const BackgroundContainer = styled.div`
@@ -52,13 +61,14 @@ const BackgroundContainer = styled.div`
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  background-image: url('/bgforLogin_mobile.png');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)), url('/bgforLogin_mobile.png');
+  filter: grayscale(100%);
 
   @media (min-width: 768px) {
-    background-image: url('/bgforLogin_desktop.png');
+    background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('/bgforLogin_desktop.png');
     background-position: right center;
   }
-`;
+`
 
 const HeaderSection = styled.div`
   display: flex;
@@ -71,39 +81,38 @@ const HeaderSection = styled.div`
   @media (min-width: 768px) {
     margin-bottom: 48px;
   }
-`;
+`
 
 const HeroTitle = styled.h1`
   font-family: 'Poppins', 'Inter', sans-serif;
-  font-size: 32px;
-  font-weight: 700;
+  font-size: 36px;
+  font-weight: 800;
   color: #ffffff;
   margin: 0;
-  letter-spacing: -0.025em;
+  letter-spacing: 0.18em;
   line-height: 1.1;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 
   @media (min-width: 768px) {
-    font-size: 48px;
+    font-size: 52px;
   }
-`;
+`
 
 const SubTitle = styled.p`
   font-family: 'Poppins', 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  color: #42C8FF;
-  margin-top: 10px;
+  color: #cccccc;
+  margin-top: 8px;
   margin-bottom: 0;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.3em;
 
   @media (min-width: 768px) {
-    font-size: 14px;
-    letter-spacing: 0.16em;
+    font-size: 13px;
+    letter-spacing: 0.32em;
   }
-`;
+`
 
 const CardsContainer = styled.div`
   display: flex;
@@ -118,17 +127,17 @@ const CardsContainer = styled.div`
   @media (min-width: 768px) {
     gap: 32px;
   }
-`;
+`
 
 const PortalCard = styled(Link)`
   width: 145px;
   height: 210px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(10, 10, 10, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 24px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -141,11 +150,9 @@ const PortalCard = styled(Link)`
 
   &:hover {
     transform: translateY(-6px) scale(1.02);
-    border-color: rgba(66, 200, 255, 0.4);
-    background: rgba(255, 255, 255, 0.15);
-    box-shadow: 
-      0 25px 65px rgba(0, 174, 239, 0.25),
-      inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(20, 20, 20, 0.95);
+    box-shadow: 0 25px 65px rgba(255, 255, 255, 0.15);
   }
 
   @media (min-width: 768px) {
@@ -153,7 +160,7 @@ const PortalCard = styled(Link)`
     height: 310px;
     padding: 36px 24px 32px;
   }
-`;
+`
 
 const LogoWrapper = styled.div`
   display: flex;
@@ -166,7 +173,7 @@ const LogoWrapper = styled.div`
     width: auto;
     object-fit: contain;
     transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
   }
 
   ${PortalCard}:hover & .portal-logo {
@@ -178,7 +185,7 @@ const LogoWrapper = styled.div`
       height: 80px;
     }
   }
-`;
+`
 
 const PortalTag = styled.h2`
   font-family: 'Poppins', 'Inter', sans-serif;
@@ -188,19 +195,18 @@ const PortalTag = styled.h2`
   margin: 12px 0 6px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 
   @media (min-width: 768px) {
     font-size: 24px;
     margin: 20px 0 10px;
   }
-`;
+`
 
 const ActionText = styled.span`
   font-family: 'Poppins', 'Inter', sans-serif;
   font-size: 11px;
   font-weight: 600;
-  color: #42C8FF;
+  color: #cccccc;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -222,6 +228,6 @@ const ActionText = styled.span`
     font-size: 14px;
     gap: 6px;
   }
-`;
+`
 
 export default LoginLanding

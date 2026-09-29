@@ -196,7 +196,7 @@ const Loading = () => {
         </div>
 
         <div className="label">
-          <div className="word">Sharpkode</div>
+          <div className="word">KODEWAR</div>
           <div className="sub">
             <span>Loading</span>
             <span className="dot"></span>

@@ -64,7 +64,7 @@ const LoginForm = ({ role }) => {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoComplete="email"
-                  placeholder={isAdmin ? 'admin@sharpkode.com' : 'employee@sharpkode.com'}
+                  placeholder={isAdmin ? 'admin@company.com' : 'employee@company.com'}
                 />
               </NeumorphicInputWrapper>
             </FieldGroup>

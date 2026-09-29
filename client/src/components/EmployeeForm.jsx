@@ -524,7 +524,7 @@ const isAdmin = currentRole === "ADMIN";
                         ? "border-rose-400 bg-rose-50/20 focus:ring-2 focus:ring-rose-500/10 focus:border-rose-500"
                         : "border-slate-200 focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500"
                     } focus:outline-none disabled:bg-slate-100 disabled:text-[#94A3B8] disabled:border-slate-200`}
-                    placeholder="john@sharpkode.com"
+                    placeholder="john@company.com"
                   />
                   {touched.email && getFieldError("email") && (
                     <span className="text-[11px] text-rose-500 font-semibold mt-1 block">

@@ -82,18 +82,18 @@ let errorMsg = getErrorMessage(error);
     <div className="relative min-h-screen surface-gradient flex items-center justify-center p-6">
       {user.role === "EMPLOYEE" && (
         <div className="absolute inset-x-0 top-0 flex h-16 items-center gap-2 border-b border-slate-200 bg-white px-4 lg:hidden">
-          <img src="/Sharpkodelogo.png" alt="SharpKode logo" className="h-7 w-10 object-contain" />
-          <span className="text-sm font-black tracking-tight text-[#07152E]">SHARPKODE</span>
+          <img src="/whiteLogo.png" alt="KODEWAR logo" className="h-7 w-10 object-contain" />
+          <span className="text-sm font-black tracking-tight text-slate-900">KODEWAR</span>
         </div>
       )}
       <div className="w-full max-w-md card p-7">
         <div className="mb-6">
-          <div className="w-11 h-11 rounded-xl bg-[#00AEEF]/10 text-[#00AEEF] flex items-center justify-center mb-4">
+          <div className="w-11 h-11 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center mb-4">
             <LockIcon className="w-5 h-5" />
           </div>
           <h1 className="text-2xl font-semibold text-slate-950">Change your temporary password</h1>
           <p className="text-sm text-slate-500 mt-2">
-            This account was created with a temporary password. Update it before continuing to SharpKode.
+            This account was created with a temporary password. Update it before continuing to KODEWAR Workforce.
           </p>
         </div>
 

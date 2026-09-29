@@ -187,7 +187,7 @@ const Settings = () => {
                         <Smartphone className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <p className="font-bold text-[#111827] text-sm">Install SharpKode App</p>
+                        <p className="font-bold text-[#111827] text-sm">Install KODEWAR App</p>
                         <p className="text-xs text-[#64748B] mt-0.5">Access EMS as a native desktop or mobile app</p>
                       </div>
                     </div>
