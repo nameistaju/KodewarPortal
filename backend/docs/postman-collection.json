@@ -1,0 +1,136 @@
+{
+  "info": {
+    "name": "SharpKode Workforce API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api.sharpkode.com/api"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "employeeId",
+      "value": ""
+    },
+    {
+      "key": "clientId",
+      "value": ""
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"<admin-email>\",\n  \"password\": \"<password>\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/refresh",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            }
+          }
+        },
+        { "name": "Get Current User", "request": { "method": "GET", "url": "{{baseUrl}}/auth/me" } },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/change-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"<current-password>\",\n  \"newPassword\": \"<new-strong-password>\"\n}"
+            }
+          }
+        },
+        { "name": "Logout", "request": { "method": "POST", "url": "{{baseUrl}}/auth/logout" } }
+      ]
+    },
+    {
+      "name": "Employees",
+      "item": [
+        { "name": "List Employees", "request": { "method": "GET", "url": "{{baseUrl}}/employees?page=1&limit=20" } },
+        { "name": "Get Profile", "request": { "method": "GET", "url": "{{baseUrl}}/employees/me/profile" } },
+        {
+          "name": "Create Employee",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/employees",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Rahul Marketing\",\n  \"phone\": \"+919876543210\",\n  \"email\": \"rahulMarketing@sharpkode.com\",\n  \"department\": \"MARKETING\",\n  \"dob\": \"1995-01-01\",\n  \"joinDate\": \"2026-06-03\",\n  \"role\": \"EMPLOYEE\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Attendance",
+      "item": [
+        { "name": "Get Settings", "request": { "method": "GET", "url": "{{baseUrl}}/attendance/settings" } },
+        {
+          "name": "Punch In",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/attendance/punch-in",
+            "body": { "mode": "raw", "raw": "{\n  \"latitude\": 12.9716,\n  \"longitude\": 77.5946\n}" }
+          }
+        },
+        { "name": "History", "request": { "method": "GET", "url": "{{baseUrl}}/attendance/history?page=1&limit=20" } }
+      ]
+    },
+    {
+      "name": "Operations",
+      "item": [
+        { "name": "Leaves", "request": { "method": "GET", "url": "{{baseUrl}}/leaves" } },
+        { "name": "Holidays", "request": { "method": "GET", "url": "{{baseUrl}}/holidays" } },
+        { "name": "Announcements", "request": { "method": "GET", "url": "{{baseUrl}}/announcements" } },
+        { "name": "Clients", "request": { "method": "GET", "url": "{{baseUrl}}/clients" } },
+        { "name": "Activity Feed", "request": { "method": "GET", "url": "{{baseUrl}}/client-activities/feed" } },
+        { "name": "Client Visits", "request": { "method": "GET", "url": "{{baseUrl}}/client-visits" } }
+      ]
+    },
+    {
+      "name": "Dashboards",
+      "item": [
+        { "name": "Admin Dashboard", "request": { "method": "GET", "url": "{{baseUrl}}/dashboard/admin" } },
+        { "name": "Employee Dashboard", "request": { "method": "GET", "url": "{{baseUrl}}/dashboard/employee" } }
+      ]
+    }
+  ]
+}

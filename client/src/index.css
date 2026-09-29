@@ -1,0 +1,208 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Poppins:wght@400..700&display=swap");
+@import "tailwindcss";
+
+:root {
+    --sk-blue: #2EA8FF;
+    --sk-blue-dark: #1F7AE0;
+    --sk-navy: #07152E;
+    --sk-bg: #F8FAFC;
+    --sk-border: #E2E8F0;
+}
+
+* {
+    font-family: "Poppins", "Inter", sans-serif;
+    letter-spacing: 0;
+}
+
+html {
+    background: #F8FAFC;
+    min-height: 100%;
+}
+
+body {
+    background-color: #F8FAFC;
+    color: #475569;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+@layer utilities {
+    .surface-gradient {
+        background: transparent;
+    }
+
+    .card {
+        background: #FFFFFF;
+        border: 1px solid #E5E7EB;
+        box-shadow: 0 10px 40px rgba(15,23,42,.06);
+        border-radius: 24px;
+    }
+
+    .card-hover {
+        @apply hover:-translate-y-0.5 hover:shadow-[0_15px_45px_rgba(15,23,42,0.1)] hover:border-slate-300 transition-all duration-200;
+    }
+
+    .btn-primary {
+        @apply bg-gradient-to-r from-[#2EA8FF] to-[#1F7AE0] text-white px-4 py-2.5 rounded-xl text-sm font-semibold
+            transition-all duration-150 shadow-md shadow-[#2EA8FF]/10
+            active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed hover:brightness-105;
+    }
+
+    .btn-secondary {
+        @apply bg-white text-[#475569] border border-[#CBD5E1] px-4 py-2.5 rounded-xl text-sm font-semibold
+            hover:bg-slate-50 hover:border-slate-400 active:scale-[0.98] transition-all duration-150 disabled:opacity-60;
+    }
+
+    .btn-ghost {
+        @apply text-slate-600 px-3 py-2 rounded-xl text-sm font-medium hover:bg-slate-100 hover:text-slate-900 active:scale-[0.98] transition-all duration-150;
+    }
+
+    input,
+    select,
+    textarea {
+        @apply w-full px-4 py-3 bg-white border border-[#CBD5E1] rounded-2xl text-[#111827]
+            focus:outline-none focus:ring-2 focus:ring-[#2EA8FF]/20 focus:border-[#2EA8FF]
+            hover:border-slate-400 transition-all duration-150 text-sm placeholder:text-slate-400 shadow-[0_1px_0_rgba(15,23,42,0.02)];
+    }
+
+    label {
+        @apply text-sm font-medium text-slate-700;
+    }
+
+    .table-modern {
+        @apply w-full text-left text-sm border-separate border-spacing-0;
+    }
+
+    .table-modern thead {
+        @apply text-[11px] font-bold text-slate-500 uppercase tracking-[0.08em] sticky top-0 bg-[#F8FAFC] z-10;
+    }
+
+    .table-modern thead th {
+        @apply px-5 py-4 border-b border-[#E2E8F0] whitespace-nowrap;
+    }
+
+    .table-modern tbody {
+        @apply divide-y divide-[#E2E8F0];
+    }
+
+    .table-modern tbody tr {
+        @apply hover:bg-slate-50 transition-colors duration-150;
+    }
+
+    .table-modern tbody td {
+        @apply px-5 py-4 align-middle text-[#475569];
+    }
+
+    .badge {
+        @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold;
+    }
+
+    .badge-success {
+        @apply bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/10;
+    }
+
+    .badge-warning {
+        @apply bg-amber-50 text-amber-700 ring-1 ring-amber-600/10;
+    }
+
+    .badge-danger {
+        @apply bg-rose-50 text-rose-700 ring-1 ring-rose-600/10;
+    }
+
+    .page-header {
+        @apply mb-7;
+    }
+
+    .page-title {
+        @apply text-2xl sm:text-[28px] leading-tight font-extrabold text-[#111827] tracking-tight;
+    }
+
+    .page-subtitle {
+        @apply text-slate-500 text-sm mt-1.5 leading-6;
+    }
+
+    .section-title {
+        @apply text-base font-semibold text-[#111827];
+    }
+
+    .empty-state {
+        @apply text-center py-14 px-6 text-slate-500;
+    }
+
+    .skeleton {
+        @apply relative overflow-hidden bg-slate-100 rounded-lg;
+    }
+
+    .skeleton::after {
+        content: "";
+        @apply absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/50 to-transparent;
+        animation: shimmer 1.35s infinite;
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.2s ease-out;
+    }
+
+    .animate-slide-up {
+        animation: slideUp 0.2s ease-out;
+    }
+}
+
+@keyframes shimmer {
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+.float-animation {
+    animation: float 4s ease-in-out infinite;
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    @apply bg-slate-200 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-300;
+}
+
+::selection {
+    @apply bg-[#2EA8FF]/20 text-[#111827];
+}

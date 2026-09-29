@@ -1,0 +1,63 @@
+export const EMPLOYEE_STATUS = Object.freeze({
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE'
+});
+
+export const DEPARTMENTS = Object.freeze({
+  MARKETING: 'MARKETING',
+  DESIGN: 'DESIGN',
+  DEVELOPMENT: 'DEVELOPMENT',
+  CONTENT: 'CONTENT',
+  SEO: 'SEO',
+  HR: 'HR',
+  OPERATIONS: 'OPERATIONS',
+  ADMIN: 'ADMIN'
+});
+
+export const LEAVE_TYPES = Object.freeze({
+  CASUAL: 'CASUAL',
+  SICK: 'SICK',
+  ANNUAL: 'ANNUAL'
+});
+
+export const REQUEST_STATUS = Object.freeze({
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED'
+});
+
+export const CLIENT_STATUS = Object.freeze({
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  COMPLETED: 'COMPLETED'
+});
+
+export const ACTIVITY_TYPES = Object.freeze({
+  POSTER_CREATED: 'POSTER_CREATED',
+  VIDEO_UPLOADED: 'VIDEO_UPLOADED',
+  CAMPAIGN_STARTED: 'CAMPAIGN_STARTED',
+  CLIENT_APPROVED: 'CLIENT_APPROVED',
+  OTHER: 'OTHER'
+});
+
+export const VISIT_OUTCOMES = Object.freeze({
+  POSITIVE: 'POSITIVE',
+  NEUTRAL: 'NEUTRAL',
+  NEGATIVE: 'NEGATIVE',
+  FOLLOW_UP_REQUIRED: 'FOLLOW_UP_REQUIRED',
+  CLOSED: 'CLOSED'
+});
+
+export const ATTENDANCE_CORRECTION_TYPES = Object.freeze({
+  PUNCH_IN: 'PUNCH_IN',
+  PUNCH_OUT: 'PUNCH_OUT',
+  BOTH: 'BOTH',
+  FORGOT_PUNCH_IN: 'Forgot Punch In',
+  FORGOT_PUNCH_OUT: 'Forgot Punch Out',
+  MANUAL_ATTENDANCE: 'Manual Attendance',
+  GPS_ISSUE: 'GPS Issue',
+  DEVICE_ISSUE: 'Device Issue',
+  FORGOT_SELFIE: 'Forgot Selfie',
+  WRONG_WORK_MODE: 'Wrong Work Mode'
+});

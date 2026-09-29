@@ -1,0 +1,9 @@
+node_modules
+.env
+backend/bootstrap-credentials.json
+*.pdf
+
+# Local data & uploads
+data/
+backend/uploads/
+client/dist/
