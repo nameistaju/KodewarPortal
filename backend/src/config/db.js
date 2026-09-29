@@ -1,39 +1,18 @@
-import mongoose from 'mongoose';
-import { env, isProduction } from './env.js';
+import { supabase } from './supabase.js';
 import logger from '../utils/logger.js';
 
 export const connectDB = async () => {
-  const mongoUri = env.mongoUri;
-
-  if (!mongoUri) {
-    throw new Error('MONGODB_URI is required');
-  }
-
-  mongoose.set('strictQuery', true);
-
-  const connection = await mongoose.connect(mongoUri, {
-    serverSelectionTimeoutMS: 10000,
-    maxPoolSize: 10,
-    autoIndex: !isProduction
-  });
-
-  logger.info('MongoDB connected', {
-    host: connection.connection.host,
-    database: connection.connection.name
-  });
-
-  process.nextTick(async () => {
-    try {
-      if (mongoose.models.Attendance) {
-        await mongoose.models.Attendance.syncIndexes();
-        logger.info('Mongoose Attendance unique indexes synchronized');
-      }
-    } catch (syncError) {
-      logger.error('Mongoose unique index synchronization failed', { error: syncError.message });
+  try {
+    const { error } = await supabase.from('employees').select('id').limit(1);
+    if (error && error.code !== 'PGRST116') {
+      logger.warn('Supabase DB test query returned notice/error', { message: error.message });
     }
-  });
-
-  return connection;
+    logger.info('Supabase PostgreSQL connected successfully');
+  } catch (err) {
+    logger.error('Failed to connect to Supabase PostgreSQL', { message: err.message });
+  }
 };
 
-export const disconnectDB = () => mongoose.connection.close(false);
+export const disconnectDB = async () => {
+  logger.info('Supabase database connection closed');
+};

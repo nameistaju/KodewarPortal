@@ -1,35 +1,58 @@
-import Holiday from '../models/Holiday.js';
+import { supabase } from '../config/supabase.js';
 import AppError from '../utils/AppError.js';
-import { escapeRegex, paginated } from '../utils/query.js';
 
-export const create = (payload, actorId) => Holiday.create({ ...payload, createdBy: actorId });
+export const getHolidays = async () => {
+  const { data, error } = await supabase
+    .from('holidays')
+    .select('*')
+    .order('holiday_date', { ascending: true });
 
-export const update = async (holidayId, payload, actorId) => {
-  const holiday = await Holiday.findByIdAndUpdate(
-    holidayId,
-    { ...payload, updatedBy: actorId },
-    { returnDocument: 'after', runValidators: true }
-  );
-
-  if (!holiday) throw new AppError('Holiday not found', 404);
-  return holiday;
-};
-
-export const remove = async (holidayId) => {
-  const holiday = await Holiday.findByIdAndDelete(holidayId);
-  if (!holiday) throw new AppError('Holiday not found', 404);
-};
-
-export const list = (query) => {
-  const filter = {};
-
-  if (query.year) {
-    filter.date = {
-      $gte: new Date(Number(query.year), 0, 1),
-      $lte: new Date(Number(query.year), 11, 31, 23, 59, 59, 999)
-    };
+  if (error) {
+    throw new AppError(`Failed to fetch holidays: ${error.message}`, 500);
   }
-  if (query.search) filter.name = new RegExp(escapeRegex(query.search), 'i');
 
-  return paginated(Holiday, filter, query, { defaultSort: 'date' });
+  return (data || []).map((row) => ({
+    _id: String(row.id),
+    id: String(row.id),
+    name: row.name,
+    date: row.holiday_date,
+    created_at: row.created_at
+  }));
+};
+
+export const createHoliday = async (payload) => {
+  const { data, error } = await supabase
+    .from('holidays')
+    .insert({
+      name: payload.name,
+      holiday_date: String(payload.date || payload.holiday_date).slice(0, 10),
+      created_at: new Date().toISOString()
+    })
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw new AppError(`Failed to create holiday: ${error?.message || 'Database error'}`, 500);
+  }
+
+  return {
+    _id: String(data.id),
+    id: String(data.id),
+    name: data.name,
+    date: data.holiday_date,
+    created_at: data.created_at
+  };
+};
+
+export const deleteHoliday = async (holidayId) => {
+  const { error } = await supabase
+    .from('holidays')
+    .delete()
+    .eq('id', holidayId);
+
+  if (error) {
+    throw new AppError(`Failed to delete holiday: ${error.message}`, 500);
+  }
+
+  return true;
 };

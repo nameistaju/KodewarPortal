@@ -1,235 +1,171 @@
-import Employee from '../models/Employee.js';
-import Leave from '../models/Leave.js';
-import { LEAVE_TYPES, REQUEST_STATUS } from '../constants/index.js';
+import { supabase } from '../config/supabase.js';
 import AppError from '../utils/AppError.js';
-import { calculateDaysInclusive, endOfDay, startOfDay } from '../utils/date.js';
-import { paginated } from '../utils/query.js';
-import logger from '../utils/logger.js';
-import { runInTransaction } from '../utils/transaction.js';
 
-export const apply = async (employeeId, payload) => {
-  const { leaveType, startDate, endDate, reason } = payload;
+const formatLeaveRecord = (row, employeeData = null) => {
+  if (!row) return null;
 
-  // 1. Employee existence check
-  if (!employeeId) {
-    logger.error('Leave application validation failed: employeeId is missing');
-    throw new AppError('User context is missing', 401);
+  return {
+    _id: String(row.id),
+    id: String(row.id),
+    employee: employeeData || row.employee_id,
+    leaveType: (row.leave_type || 'CASUAL').toUpperCase(),
+    startDate: row.start_date,
+    endDate: row.end_date,
+    reason: row.reason || '',
+    status: (row.status || 'PENDING').toUpperCase(),
+    reviewedBy: row.reviewed_by || null,
+    reviewedAt: row.reviewed_at || null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+};
+
+export const applyLeave = async (employeeId, payload) => {
+  const startDateStr = String(payload.startDate).slice(0, 10);
+  const endDateStr = String(payload.endDate).slice(0, 10);
+
+  if (new Date(endDateStr) < new Date(startDateStr)) {
+    throw new AppError('End date cannot be earlier than start date', 400);
   }
 
-  const employee = await Employee.findById(employeeId);
-  if (!employee) {
-    logger.error('Leave application validation failed: Employee not found', { employeeId });
-    throw new AppError('Employee not found', 404);
+  const insertData = {
+    employee_id: employeeId,
+    leave_type: String(payload.leaveType || 'casual').toLowerCase(),
+    start_date: startDateStr,
+    end_date: endDateStr,
+    reason: payload.reason || '',
+    status: 'pending',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  const { data: createdRow, error } = await supabase
+    .from('leaves')
+    .insert(insertData)
+    .select('*')
+    .single();
+
+  if (error || !createdRow) {
+    throw new AppError(`Failed to submit leave request: ${error?.message || 'Database error'}`, 500);
   }
 
-  // 2. Leave type enum validation
-  if (!Object.values(LEAVE_TYPES).includes(leaveType)) {
-    logger.error('Leave application validation failed: Invalid leaveType', {
-      employeeId,
-      leaveType,
-      allowedTypes: Object.values(LEAVE_TYPES)
-    });
-    throw new AppError(`Invalid leave type: ${leaveType}`, 400);
+  return formatLeaveRecord(createdRow);
+};
+
+export const getLeaveRequests = async (requestUser, query = {}) => {
+  let builder = supabase
+    .from('leaves')
+    .select('*, employees!inner(id, name, email, department)', { count: 'exact' });
+
+  if (requestUser.role === 'EMPLOYEE') {
+    builder = builder.eq('employee_id', requestUser.id || requestUser._id);
+  } else if (requestUser.role === 'ADMIN' && query.employeeId) {
+    builder = builder.eq('employee_id', query.employeeId);
   }
 
-  // 3. Valid date formatting and ranges
-  const start = startOfDay(startDate);
-  const end = startOfDay(endDate);
-  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-    logger.error('Leave application validation failed: Invalid date formats', {
-      employeeId,
-      startDate,
-      endDate
-    });
-    throw new AppError('Invalid start date or end date format', 400);
+  if (query.status) {
+    builder = builder.eq('status', query.status.toLowerCase());
   }
 
-  if (end < start) {
-    logger.error('Leave application validation failed: End date is before start date', {
-      employeeId,
-      startDate,
-      endDate
-    });
-    throw new AppError('End date must be greater than or equal to start date', 400);
+  const page = Number(query.page || 1);
+  const limit = Number(query.limit || 25);
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  builder = builder.order('created_at', { ascending: false }).range(from, to);
+
+  const { data, count, error } = await builder;
+
+  if (error) {
+    throw new AppError(`Failed to fetch leave requests: ${error.message}`, 500);
   }
 
-  // 4. Leave balances existence check
-  if (!employee.leaveBalances || !Array.isArray(employee.leaveBalances)) {
-    logger.error('Leave application validation failed: leaveBalances array is missing', { employeeId });
-    throw new AppError('Leave balances not initialized for this employee', 400);
-  }
+  const items = (data || []).map((row) => formatLeaveRecord(row, row.employees));
+  const total = count || items.length;
 
-  const balance = employee.leaveBalances.find((b) => b.type === leaveType);
-  if (!balance) {
-    logger.error('Leave application validation failed: leave balance for type not found', {
-      employeeId,
-      leaveType
-    });
-    throw new AppError(`Leave balance for type ${leaveType} not found`, 400);
-  }
-
-  const totalDays = calculateDaysInclusive(startDate, endDate);
-
-  // 5. Sufficient balance check
-  const remaining = balance.allocated - balance.used;
-  if (remaining < totalDays) {
-    logger.error('Leave application validation failed: Insufficient leave balance', {
-      employeeId,
-      leaveType,
-      requestedDays: totalDays,
-      availableDays: remaining
-    });
-    throw new AppError(`Insufficient leave balance. Requested: ${totalDays}, Available: ${remaining}`, 400);
-  }
-
-  // 6. Overlapping request check
-  const overlapping = await Leave.findOne({
-    employee: employeeId,
-    status: { $in: [REQUEST_STATUS.PENDING, REQUEST_STATUS.APPROVED] },
-    $or: [
-      { startDate: { $lte: end }, endDate: { $gte: start } }
-    ]
-  });
-
-  if (overlapping) {
-    logger.error('Leave application validation failed: Overlapping request exists', {
-      employeeId,
-      startDate,
-      endDate,
-      overlappingLeaveId: overlapping._id
-    });
-    throw new AppError('Leave request overlaps with an existing pending or approved request', 400);
-  }
-
-  try {
-    const leave = await Leave.create({
-      ...payload,
-      startDate: start,
-      endDate: end,
-      employee: employeeId,
-      totalDays
-    });
-
-    logger.info('Leave request created successfully', {
-      leaveId: leave._id,
-      employeeId,
-      leaveType,
-      totalDays
-    });
-
-    return leave;
-  } catch (error) {
-    logger.error('Leave model validation or creation failed', {
-      employeeId,
-      leaveType,
-      startDate,
-      endDate,
-      error: error.message,
-      stack: error.stack
-    });
-
-    if (error.name === 'ValidationError') {
-      throw error; // normalizeError will format it and set status 400
+  return {
+    items,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit) || 1
     }
-    if (error?.isOperational) throw error;
-    if (error?.code === 11000) throw new AppError('A duplicate leave request was prevented', 409);
-    throw new AppError('Leave request could not be saved. Please try again.', 503);
-  }
+  };
 };
 
-export const cancel = async (leaveId, employeeId, reason) => {
-  const leave = await Leave.findOneAndUpdate(
-    { _id: leaveId, employee: employeeId, status: REQUEST_STATUS.PENDING },
-    {
-      $set: {
-        status: REQUEST_STATUS.CANCELLED,
-        cancelledAt: new Date(),
-        cancellationReason: reason
-      }
-    },
-    { returnDocument: 'after', runValidators: true }
-  );
-
-  if (!leave) {
-    const exists = await Leave.exists({ _id: leaveId, employee: employeeId });
-    throw new AppError(exists ? 'Only pending leave can be cancelled' : 'Leave request not found', exists ? 409 : 404);
-  }
-  return leave;
-};
-
-export const history = (requestUser, query) => {
-  const filter = {};
-
-  if (requestUser.role === 'EMPLOYEE') filter.employee = requestUser._id;
-  if (requestUser.role === 'ADMIN' && query.employeeId) filter.employee = query.employeeId;
-  if (query.status) filter.status = query.status;
-  if (query.leaveType) filter.leaveType = query.leaveType;
-  if (query.from || query.to) {
-    filter.startDate = {};
-    if (query.from) filter.startDate.$gte = startOfDay(query.from);
-    if (query.to) filter.startDate.$lte = endOfDay(query.to);
+export const reviewLeaveRequest = async (leaveId, { status }, adminId) => {
+  const targetStatus = String(status).toLowerCase();
+  if (!['approved', 'rejected'].includes(targetStatus)) {
+    throw new AppError('Invalid leave status. Must be approved or rejected.', 400);
   }
 
-  return paginated(Leave, filter, query, {
-    defaultSort: '-startDate',
-    populate: [
-      { path: 'employee', select: 'name email department leaveBalances' },
-      { path: 'reviewedBy', select: 'name email' }
-    ]
-  });
-};
+  const { data: leaveRow } = await supabase
+    .from('leaves')
+    .select('*')
+    .eq('id', leaveId)
+    .single();
 
-export const approve = async (leaveId, adminId, remarks) => {
-  const leave = await runInTransaction(async (session) => {
-    const pending = await Leave.findOne({ _id: leaveId, status: REQUEST_STATUS.PENDING }).session(session);
-    if (!pending) {
-      const exists = await Leave.exists({ _id: leaveId }).session(session);
-      throw new AppError(exists ? 'Leave request already reviewed' : 'Leave request not found', exists ? 409 : 404);
+  if (!leaveRow) {
+    throw new AppError('Leave request not found', 404);
+  }
+
+  const { data: updatedRow, error } = await supabase
+    .from('leaves')
+    .update({
+      status: targetStatus,
+      reviewed_by: adminId,
+      reviewed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', leaveId)
+    .select('*')
+    .single();
+
+  if (error || !updatedRow) {
+    throw new AppError('Failed to review leave request', 500);
+  }
+
+  // If approved, calculate days and deduct balance
+  if (targetStatus === 'approved') {
+    const start = new Date(leaveRow.start_date);
+    const end = new Date(leaveRow.end_date);
+    const days = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1);
+
+    const { data: emp } = await supabase
+      .from('employees')
+      .select('leave_balance_casual, leave_balance_sick')
+      .eq('id', leaveRow.employee_id)
+      .single();
+
+    if (emp) {
+      const isCasual = (leaveRow.leave_type || '').toLowerCase() === 'casual';
+      const currentCasual = emp.leave_balance_casual ?? 12;
+      const currentSick = emp.leave_balance_sick ?? 12;
+
+      await supabase
+        .from('employees')
+        .update({
+          leave_balance_casual: isCasual ? Math.max(0, currentCasual - days) : currentCasual,
+          leave_balance_sick: !isCasual ? Math.max(0, currentSick - days) : currentSick,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', leaveRow.employee_id);
     }
-
-    const employee = await Employee.findById(pending.employee).session(session);
-    if (!employee) throw new AppError('Employee not found', 404);
-    const balance = employee.leaveBalances.find((item) => item.type === pending.leaveType);
-    if (!balance) throw new AppError('Leave balance is not configured for this leave type', 409);
-    if (balance.allocated - balance.used < pending.totalDays) throw new AppError('Insufficient leave balance at approval time', 409);
-
-    balance.used += pending.totalDays;
-    await employee.save({ session });
-
-    pending.status = REQUEST_STATUS.APPROVED;
-    pending.reviewedBy = adminId;
-    pending.reviewedAt = new Date();
-    pending.reviewRemarks = remarks;
-    await pending.save({ session });
-    return pending;
-  }, 'Leave approval could not be committed safely');
-
-  return leave.populate([
-    { path: 'employee', select: 'name email department leaveBalances' },
-    { path: 'reviewedBy', select: 'name email' }
-  ]);
-};
-export const reject = async (leaveId, adminId, remarks) => {
-  const leave = await Leave.findOneAndUpdate(
-    { _id: leaveId, status: REQUEST_STATUS.PENDING },
-    {
-      $set: {
-        status: REQUEST_STATUS.REJECTED,
-        reviewedBy: adminId,
-        reviewedAt: new Date(),
-        reviewRemarks: remarks
-      }
-    },
-    { returnDocument: 'after', runValidators: true }
-  );
-
-  if (!leave) {
-    const exists = await Leave.exists({ _id: leaveId });
-    throw new AppError(exists ? 'Leave request already reviewed' : 'Leave request not found', exists ? 409 : 404);
   }
 
-  return leave.populate([
-    { path: 'employee', select: 'name email department leaveBalances' },
-    { path: 'reviewedBy', select: 'name email' }
-  ]);
+  return formatLeaveRecord(updatedRow);
+};
+
+export const getLeaveBalances = async (employeeId) => {
+  const { data: emp } = await supabase
+    .from('employees')
+    .select('leave_balance_casual, leave_balance_sick')
+    .eq('id', employeeId)
+    .single();
+
+  return [
+    { leaveType: 'CASUAL', allocatedDays: 12, availableDays: emp?.leave_balance_casual ?? 12 },
+    { leaveType: 'SICK', allocatedDays: 12, availableDays: emp?.leave_balance_sick ?? 12 }
+  ];
 };

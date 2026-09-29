@@ -1,4 +1,3 @@
-import mongoose from 'mongoose';
 import { z } from 'zod';
 import { isStrongPassword } from '../utils/password.js';
 
@@ -31,9 +30,7 @@ export const changePasswordSchema = z
   });
 
 export const resetPasswordParamsSchema = z.object({
-  employeeId: z.string().refine((value) => mongoose.Types.ObjectId.isValid(value), {
-    message: 'A valid employeeId is required'
-  })
+  employeeId: z.string().trim().min(1, 'A valid employeeId is required')
 });
 
 export const resetPasswordSchema = z.object({

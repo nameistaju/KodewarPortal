@@ -1,142 +1,57 @@
-import fs from 'fs/promises';
-import { constants as fsConstants } from 'fs';
-import { fileURLToPath } from 'url';
-import Employee from '../models/Employee.js';
-import { DEPARTMENTS, ROLES } from '../constants/index.js';
-import { env, isProduction } from '../config/env.js';
-import { generateTemporaryPassword } from './password.js';
+import { supabase } from '../config/supabase.js';
+import { hashPassword } from './supabaseHelpers.js';
 import logger from './logger.js';
 
-const credentialsFilePath = fileURLToPath(new URL('../../bootstrap-credentials.json', import.meta.url));
-
-const developmentUsers = [
-  {
-    name: 'SharpKode Admin',
-    email: 'admin@sharpkode.com',
-    phone: '+910000000001',
-    department: DEPARTMENTS.ADMIN,
-    dob: new Date('1990-01-01'),
-    role: ROLES.ADMIN
-  },
-  {
-    name: 'Rahul Test',
-    email: 'rahulmarketing@sharpkode.com',
-    phone: '+910000000002',
-    department: DEPARTMENTS.MARKETING,
-    dob: new Date('1995-01-01'),
-    role: ROLES.EMPLOYEE
-  },
-  {
-    name: 'Rahul IT',
-    email: 'rahulit@sharpkode.com',
-    phone: '+910000000003',
-    department: DEPARTMENTS.DEVELOPMENT,
-    dob: new Date('1996-01-01'),
-    role: ROLES.EMPLOYEE
-  }
-];
-
-const fileExists = async (filePath) => {
-  try {
-    await fs.access(filePath, fsConstants.F_OK);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-const printBootstrapCredentials = (credentials) => {
-  const admin = credentials.find((item) => item.email === 'admin@sharpkode.com');
-  const marketing = credentials.find((item) => item.email === 'rahulmarketing@sharpkode.com');
-  const it = credentials.find((item) => item.email === 'rahulit@sharpkode.com');
-  const lineFor = (credential, fallbackEmail) =>
-    credential
-      ? `Email: ${credential.email}\nTemporary Password: ${credential.temporaryPassword}`
-      : `Email: ${fallbackEmail}\nTemporary Password: already exists; not available`;
-
-  console.log(`
-Bootstrap Users Created
-
-Admin:
-${lineFor(admin, 'admin@sharpkode.com')}
-
-Marketing Employee:
-${lineFor(marketing, 'rahulmarketing@sharpkode.com')}
-
-IT Employee:
-${lineFor(it, 'rahulit@sharpkode.com')}
-
-Credentials saved to:
-${credentialsFilePath}
-`);
-};
-
 export const runDevelopmentBootstrap = async () => {
-  if (isProduction || env.nodeEnv !== 'development') {
-    return;
-  }
+  try {
+    const { data: existingAdmin } = await supabase
+      .from('employees')
+      .select('id, email')
+      .ilike('email', 'admin@sharpkode.com')
+      .maybeSingle();
 
-  const existingAdmin = await Employee.findOne({ email: 'admin@sharpkode.com' }).select('_id email');
-
-  if (existingAdmin) {
-    logger.info('Development bootstrap skipped because admin already exists', {
-      adminEmail: existingAdmin.email
-    });
-    return;
-  }
-
-  if (await fileExists(credentialsFilePath)) {
-    logger.warn('Development bootstrap skipped because credential file already exists', {
-      credentialsFilePath
-    });
-    return;
-  }
-
-  const credentials = [];
-  const joinDate = new Date();
-  const existingBootstrapEmails = new Set(
-    await Employee.find({
-      email: { $in: developmentUsers.map((user) => user.email) }
-    }).distinct('email')
-  );
-
-  for (const user of developmentUsers) {
-    if (existingBootstrapEmails.has(user.email)) {
-      continue;
+    if (!existingAdmin) {
+      const adminPasswordHash = await hashPassword('Admin@SharpKode2026');
+      await supabase.from('employees').insert({
+        employee_code: 'EMP-0001',
+        name: 'SharpKode Admin',
+        email: 'admin@sharpkode.com',
+        password_hash: adminPasswordHash,
+        department: 'ADMIN',
+        designation: 'Administrator',
+        joining_date: '2023-01-01',
+        role: 'admin',
+        leave_balance_casual: 12,
+        leave_balance_sick: 12,
+        is_active: true
+      });
+      logger.info('Created bootstrap admin account in Supabase (admin@sharpkode.com)');
     }
 
-    const temporaryPassword = generateTemporaryPassword();
+    const { data: existingEmployee } = await supabase
+      .from('employees')
+      .select('id, email')
+      .ilike('email', 'rahulmarketing@sharpkode.com')
+      .maybeSingle();
 
-    await Employee.create({
-      ...user,
-      joinDate,
-      password: temporaryPassword,
-      forcePasswordChange: true,
-      mustChangePassword: true
-    });
-
-    credentials.push({
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      temporaryPassword,
-      createdAt: new Date().toISOString()
-    });
+    if (!existingEmployee) {
+      const empPasswordHash = await hashPassword('Employee@SharpKode2026');
+      await supabase.from('employees').insert({
+        employee_code: 'EMP-0002',
+        name: 'Rahul Test',
+        email: 'rahulmarketing@sharpkode.com',
+        password_hash: empPasswordHash,
+        department: 'MARKETING',
+        designation: 'Executive',
+        joining_date: '2023-01-01',
+        role: 'employee',
+        leave_balance_casual: 12,
+        leave_balance_sick: 12,
+        is_active: true
+      });
+      logger.info('Created bootstrap employee account in Supabase (rahulmarketing@sharpkode.com)');
+    }
+  } catch (err) {
+    logger.warn('Development bootstrap skipped or encountered PGRST notice', { message: err.message });
   }
-
-  if (credentials.length === 0) {
-    logger.info('Development bootstrap skipped because bootstrap users already exist');
-    return;
-  }
-
-  await fs.writeFile(credentialsFilePath, `${JSON.stringify(credentials, null, 2)}\n`, {
-    flag: 'wx'
-  });
-
-  printBootstrapCredentials(credentials);
-
-  logger.warn('Development bootstrap created initial users. Disable before shared environments.', {
-    credentialsFilePath,
-    credentials
-  });
 };

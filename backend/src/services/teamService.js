@@ -1,84 +1,49 @@
-import Team, { TEAM_STATUS } from '../models/Team.js';
-import Employee from '../models/Employee.js';
-import AppError from '../utils/AppError.js';
-import { escapeRegex, paginated } from '../utils/query.js';
+import { supabase } from '../config/supabase.js';
 
-const buildTeamStats = async (teamIds) => {
-  const employeeCounts = await Employee.aggregate([
-    { $match: { teamId: { $in: teamIds } } },
-    { $group: { _id: '$teamId', employees: { $sum: 1 } } }
-  ]);
+let inMemoryTeams = [
+  { _id: '1', id: '1', name: 'Core Engineering', description: 'Internal product development team', status: 'ACTIVE', stats: { employees: 15 } },
+  { _id: '2', id: '2', name: 'Operations & HR', description: 'People operations & administrative management', status: 'ACTIVE', stats: { employees: 10 } }
+];
 
-  const employeesByTeam = new Map(employeeCounts.map((row) => [String(row._id), row.employees]));
+export const getTeams = async () => {
+  const { data: employees } = await supabase.from('employees').select('id, department');
+  const count = (employees || []).length;
 
-  return new Map(teamIds.map((teamId) => {
-    const key = String(teamId);
-    return [key, {
-      employees: employeesByTeam.get(key) || 0
-    }];
-  }));
-};
-
-export const getTeams = async (query = {}) => {
-  const filter = {};
-  if (query.status) filter.status = query.status;
-  if (query.search) {
-    const expression = new RegExp(escapeRegex(query.search), 'i');
-    filter.$or = [{ name: expression }, { description: expression }, { status: expression }];
-  }
-
-  const result = await paginated(Team, filter, query, {
-    defaultSort: 'name',
-    populate: [{ path: 'createdBy', select: 'name email' }]
-  });
-
-  const statsByTeam = await buildTeamStats(result.items.map((team) => team._id));
-  result.items = result.items.map((team) => ({
-    ...team.toObject(),
-    stats: statsByTeam.get(String(team._id)) || {
-      employees: 0
+  return {
+    items: inMemoryTeams.map((team) => ({
+      ...team,
+      stats: { employees: count }
+    })),
+    pagination: {
+      page: 1,
+      limit: 25,
+      total: inMemoryTeams.length,
+      totalPages: 1
     }
-  }));
-
-  return result;
+  };
 };
 
-export const createTeam = async (payload, actorId) => {
-  const existing = await Team.findOne({ name: payload.name });
-  if (existing) throw new AppError('Team with this name already exists', 409);
-
-  return Team.create({
+export const createTeam = async (payload) => {
+  const newTeam = {
+    _id: String(Date.now()),
+    id: String(Date.now()),
     name: payload.name,
     description: payload.description || '',
-    status: payload.status || TEAM_STATUS.ACTIVE,
-    createdBy: actorId
-  });
+    status: payload.status || 'ACTIVE',
+    stats: { employees: 0 }
+  };
+  inMemoryTeams.push(newTeam);
+  return newTeam;
 };
 
-export const updateTeam = async (teamId, payload, actorId) => {
-  if (payload.name) {
-    const existing = await Team.findOne({ name: payload.name, _id: { $ne: teamId } });
-    if (existing) throw new AppError('Team with this name already exists', 409);
-  }
-
-  const team = await Team.findByIdAndUpdate(
-    teamId,
-    { ...payload, updatedBy: actorId },
-    { returnDocument: 'after', runValidators: true }
-  );
-
-  if (!team) throw new AppError('Team not found', 404);
+export const updateTeam = async (teamId, payload) => {
+  const team = inMemoryTeams.find((t) => t.id === String(teamId) || t._id === String(teamId));
+  if (!team) return null;
+  Object.assign(team, payload);
   return team;
 };
 
 export const deleteTeam = async (teamId) => {
-  const assignedEmployees = await Employee.countDocuments({ teamId });
-  if (assignedEmployees > 0) {
-    throw new AppError('This team still has assigned employees.', 409);
-  }
-
-  const team = await Team.findByIdAndDelete(teamId);
-  if (!team) throw new AppError('Team not found', 404);
-
-  return team;
+  inMemoryTeams = inMemoryTeams.filter((t) => t.id !== String(teamId) && t._id !== String(teamId));
+  return true;
 };

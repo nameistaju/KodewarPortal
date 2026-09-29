@@ -1,95 +1,42 @@
 import cron from 'node-cron';
-import Attendance from '../models/Attendance.js';
-import AuditLog from '../models/AuditLog.js';
-import { runInTransaction } from '../utils/transaction.js';
-import { getZonedParts, zonedDateTimeToUtc } from '../utils/date.js';
-import { env } from '../config/env.js';
+import { supabase } from '../config/supabase.js';
 import logger from '../utils/logger.js';
 
 let cronJob = null;
-
-const getPunchOutTimeForDate = (recordDate) => {
-  const parts = getZonedParts(recordDate);
-  return zonedDateTimeToUtc({
-    year: parts.year,
-    month: parts.month,
-    day: parts.day,
-    hour: 20,
-    minute: 30,
-    second: 0,
-    millisecond: 0
-  });
-};
 
 export const autoCloseOrphanedAttendances = async () => {
   logger.info('Starting attendance auto-close job execution');
 
   try {
-    const openRecords = await Attendance.find({
-      attendanceStatus: 'PUNCHED_IN',
-      'punchIn.time': { $exists: true },
-      $or: [
-        { 'punchOut.time': { $exists: false } },
-        { 'punchOut.time': null }
-      ]
-    }).populate('employee');
+    const { data: openRecords, error } = await supabase
+      .from('attendance')
+      .select('*')
+      .not('punch_in', 'is', null)
+      .is('punch_out', null);
 
-    logger.info(`Found ${openRecords.length} open attendance records to close`);
+    if (error) {
+      logger.error('Error fetching open attendance records for auto-close job', { error: error.message });
+      return;
+    }
 
-    for (const record of openRecords) {
-      if (!record.employee) {
-        logger.error('Auto-close skipped: Attendance record lacks valid employee reference', { attendanceId: record._id });
-        continue;
-      }
+    logger.info(`Found ${(openRecords || []).length} open attendance records to close`);
 
-      const punchOutTime = getPunchOutTimeForDate(record.date);
+    for (const record of (openRecords || [])) {
+      const punchOutTime = new Date().toISOString();
 
-      try {
-        await runInTransaction(async (session) => {
-          record.attendanceStatus = 'PUNCHED_OUT';
-          record.isAutoClosed = true;
-          record.punchOut = {
-            time: punchOutTime,
-            location: {
-              latitude: env.defaultOfficeLatitude,
-              longitude: env.defaultOfficeLongitude,
-              distanceFromOfficeMeters: 0,
-              accuracy: 0
-            },
-            deviceInfo: 'System Auto-Close'
-          };
+      await supabase
+        .from('attendance')
+        .update({
+          punch_out: punchOutTime,
+          status: 'PUNCHED_OUT',
+          updated_at: punchOutTime
+        })
+        .eq('id', record.id);
 
-          record.workingHours = Number(((punchOutTime - record.punchIn.time) / 3600000).toFixed(2));
-
-          await record.save({ session });
-
-          await AuditLog.create([{
-            employeeEmail: record.employee.email,
-            action: 'Attendance Auto-Close',
-            adminEmail: 'system@kodewar.com',
-            timestamp: new Date(),
-            employee: record.employee._id,
-            attendanceId: record._id,
-            reason: 'System automatically punched out at 8:30 PM due to missing punch out.',
-            operatorType: 'SYSTEM'
-          }], { session });
-
-          logger.info(`Auto-closed attendance record successfully`, {
-            attendanceId: record._id,
-            employeeEmail: record.employee.email,
-            punchOutTime: punchOutTime.toISOString()
-          });
-        });
-      } catch (txnError) {
-        logger.error('Failed to auto-close attendance record inside transaction', {
-          attendanceId: record._id,
-          employeeEmail: record.employee.email,
-          error: txnError.message
-        });
-      }
+      logger.info('Auto-closed attendance record successfully', { id: record.id });
     }
   } catch (err) {
-    logger.error('Error fetching open attendance records for auto-close job', { error: err.message });
+    logger.error('Error executing auto-close job', { error: err.message });
   }
 };
 

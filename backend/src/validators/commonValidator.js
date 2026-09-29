@@ -1,9 +1,6 @@
-import mongoose from 'mongoose';
 import { z } from 'zod';
 
-export const objectId = z.string().refine((value) => mongoose.Types.ObjectId.isValid(value), {
-  message: 'A valid MongoDB ObjectId is required'
-});
+export const objectId = z.string().trim().min(1, 'A valid record ID is required');
 
 export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),

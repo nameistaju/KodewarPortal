@@ -1,86 +1,58 @@
-import Employee from '../models/Employee.js';
-import Team from '../models/Team.js';
-import { EMPLOYEE_STATUS } from '../constants/index.js';
+import { supabase } from '../config/supabase.js';
 import AppError from '../utils/AppError.js';
-import { escapeRegex, paginated } from '../utils/query.js';
-import { deleteUploadedImage, uploadImageBuffer } from './uploadService.js';
-import RefreshToken from '../models/RefreshToken.js';
+import { hashPassword, mapEmployeeFromDb } from '../utils/supabaseHelpers.js';
 import { generateTemporaryPassword } from '../utils/password.js';
 
-const publicFields = '-password -passwordResetToken -passwordResetExpires -tokenVersion';
-const validateTeam = async (teamId) => {
-  if (!teamId) return;
-  const team = await Team.findById(teamId).select('_id status');
-  if (!team) throw new AppError('Assigned team not found', 400);
-  if (team.status !== 'ACTIVE') throw new AppError('Assigned team must be active', 400);
-};
+export const createEmployee = async (payload) => {
+  // Check if email exists
+  const { data: existingEmail } = await supabase
+    .from('employees')
+    .select('id')
+    .ilike('email', payload.email.trim())
+    .maybeSingle();
 
-export const createEmployee = async (payload, actorId, file) => {
-  await validateTeam(payload.teamId);
-  const existing = await Employee.findOne({ email: payload.email });
-
-  if (existing) {
+  if (existingEmail) {
     throw new AppError('Employee with this email already exists', 409);
   }
 
-  if (payload.phone) {
-    const existingPhone = await Employee.findOne({ phone: payload.phone });
-    if (existingPhone) {
-      throw new AppError('Phone number already exists', 409);
-    }
-  }
-
-  const userRole = payload.role || 'EMPLOYEE';
-  if (userRole === 'ADMIN') {
-    payload.department = payload.department || 'ADMIN';
-    payload.phone = payload.phone || '+910000000000';
-    payload.dob = payload.dob || new Date('1990-01-01');
-    payload.tracksAttendance = false;
-  } else if (userRole === 'MANAGER') {
-    payload.phone = payload.phone || '+910000000000';
-    payload.dob = payload.dob || new Date('1990-01-01');
-    payload.tracksAttendance = false;
-  } else if (userRole === 'TEAM_LEAD') {
-    payload.dob = payload.dob || new Date('1990-01-01');
-    payload.tracksAttendance = false;
-  } else {
-    payload.dob = payload.dob || new Date('1990-01-01');
-    if (payload.tracksAttendance === undefined) {
-      payload.tracksAttendance = true;
-    }
-  }
-
-  const profilePhoto = file ? await uploadImageBuffer(file, 'profile') : payload.profilePhoto;
-
+  const userRole = (payload.role || 'employee').toLowerCase();
   let generatedPassword = null;
   let passwordToUse = payload.password;
 
-  if (payload.autoGeneratePassword) {
+  if (payload.autoGeneratePassword || !passwordToUse) {
     passwordToUse = generateTemporaryPassword();
     generatedPassword = passwordToUse;
   }
 
-  delete payload.autoGeneratePassword;
+  const passwordHash = await hashPassword(passwordToUse);
+  const employeeCode = payload.employeeCode || `EMP-${Date.now().toString().slice(-4)}`;
 
-  let employee;
-  try {
-    employee = await Employee.create({
-      ...payload,
-      password: passwordToUse,
-      profilePhoto,
-      forcePasswordChange: true,
-      mustChangePassword: true,
-      createdBy: actorId
-    });
-  } catch (error) {
-    if (file && profilePhoto?.publicId) await deleteUploadedImage(profilePhoto.publicId);
-    throw error;
-  }
-
-  const result = {
-    employee: await Employee.findById(employee._id).select(publicFields).populate('teamId', 'name status description')
+  const insertData = {
+    employee_code: employeeCode,
+    name: payload.name,
+    email: payload.email.trim().toLowerCase(),
+    password_hash: passwordHash,
+    department: payload.department || 'DEVELOPMENT',
+    designation: payload.designation || 'Staff',
+    joining_date: payload.joiningDate || new Date().toISOString().slice(0, 10),
+    role: userRole === 'admin' ? 'admin' : 'employee',
+    leave_balance_casual: payload.leaveBalanceCasual ?? 12,
+    leave_balance_sick: payload.leaveBalanceSick ?? 12,
+    is_active: payload.status !== 'INACTIVE'
   };
 
+  const { data: createdRow, error } = await supabase
+    .from('employees')
+    .insert(insertData)
+    .select('*')
+    .single();
+
+  if (error || !createdRow) {
+    throw new AppError(`Failed to create employee: ${error?.message || 'Unknown database error'}`, 500);
+  }
+
+  const employee = mapEmployeeFromDb(createdRow);
+  const result = { employee };
   if (generatedPassword) {
     result.generatedPassword = generatedPassword;
   }
@@ -88,165 +60,115 @@ export const createEmployee = async (payload, actorId, file) => {
   return result;
 };
 
-export const getEmployees = async (query) => {
-  const filter = {};
+export const getEmployees = async (query = {}) => {
+  let builder = supabase.from('employees').select('*', { count: 'exact' });
 
-  if (query.department) filter.department = query.department;
-  if (query.status) filter.status = query.status;
-  if (query.role) filter.role = query.role;
-  if (query.teamId) filter.teamId = query.teamId;
+  if (query.department) {
+    builder = builder.eq('department', query.department);
+  }
+  if (query.role) {
+    builder = builder.eq('role', query.role.toLowerCase());
+  }
+  if (query.status) {
+    builder = builder.eq('is_active', query.status === 'ACTIVE');
+  }
   if (query.search) {
-    const regex = new RegExp(escapeRegex(query.search), 'i');
-    filter.$or = [{ name: regex }, { email: regex }, { phone: regex }, { department: regex }];
+    builder = builder.or(`name.ilike.%${query.search}%,email.ilike.%${query.search}%`);
   }
 
-  return paginated(Employee, filter, query, {
-    projection: publicFields,
-    defaultSort: 'name',
-    populate: [{ path: 'teamId', select: 'name status description' }]
-  });
-};
+  const page = Number(query.page || 1);
+  const limit = Number(query.limit || 25);
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
 
-export const getEmployeeById = async (employeeId) => {
-  const employee = await Employee.findById(employeeId)
-    .select(publicFields)
-    .populate('teamId', 'name status description');
+  builder = builder.order('name', { ascending: true }).range(from, to);
 
-  if (!employee) throw new AppError('Employee not found', 404);
+  const { data, count, error } = await builder;
 
-  return employee;
-};
-
-export const updateEmployee = async (employeeId, payload, actorId, file) => {
-  await validateTeam(payload.teamId);
-  const employee = await Employee.findById(employeeId).select('+tokenVersion');
-
-  if (!employee) throw new AppError('Employee not found', 404);
-
-  if (payload.phone && payload.phone !== employee.phone) {
-    const existingPhone = await Employee.findOne({ phone: payload.phone, _id: { $ne: employeeId } });
-    if (existingPhone) {
-      throw new AppError('Phone number already exists', 409);
-    }
+  if (error) {
+    throw new AppError(`Failed to fetch employees: ${error.message}`, 500);
   }
 
-  const previousProfilePhoto = employee.profilePhoto?.publicId || employee.profilePhoto?.url;
-  const profilePhoto = file ? await uploadImageBuffer(file, 'profile') : payload.profilePhoto;
-
-  const isPasswordModified = !!payload.password;
-
-  if (isPasswordModified) {
-    employee.password = payload.password;
-    employee.forcePasswordChange = true;
-    employee.mustChangePassword = true;
-    employee.tokenVersion = (employee.tokenVersion || 0) + 1;
-    delete payload.password;
-    if (payload.forcePasswordChange !== undefined) {
-      delete payload.forcePasswordChange;
-    }
-  } else if (payload.forcePasswordChange !== undefined) {
-    employee.forcePasswordChange = payload.forcePasswordChange;
-    employee.mustChangePassword = payload.forcePasswordChange;
-    delete payload.forcePasswordChange;
-  }
-
-  Object.assign(employee, payload, {
-    ...(profilePhoto ? { profilePhoto } : {}),
-    updatedBy: actorId
-  });
-
-  try {
-    await employee.save();
-  } catch (error) {
-    if (file && profilePhoto?.publicId) await deleteUploadedImage(profilePhoto.publicId);
-    throw error;
-  }
-
-  if (file && previousProfilePhoto) await deleteUploadedImage(previousProfilePhoto);
-
-  if (isPasswordModified) {
-    await RefreshToken.deleteMany({ employee: employee._id });
-  }
-
-  return getEmployeeById(employee._id);
-};
-
-export const setEmployeeStatus = async (employeeId, status, actorId) => {
-  const employee = await Employee.findByIdAndUpdate(
-    employeeId,
-    { status, updatedBy: actorId },
-    { returnDocument: 'after', runValidators: true }
-  ).select(publicFields);
-
-  if (!employee) throw new AppError('Employee not found', 404);
-
-  return employee;
-};
-
-export const deactivateEmployee = (employeeId, actorId) =>
-  setEmployeeStatus(employeeId, EMPLOYEE_STATUS.INACTIVE, actorId);
-
-export const activateEmployee = (employeeId, actorId) =>
-  setEmployeeStatus(employeeId, EMPLOYEE_STATUS.ACTIVE, actorId);
-
-export const getProfile = (employeeId) => getEmployeeById(employeeId);
-
-export const updateProfile = async (employeeId, payload, file) => {
-  const employee = await Employee.findById(employeeId);
-
-  if (!employee) throw new AppError('Employee not found', 404);
-
-  if (payload.phone && payload.phone !== employee.phone) {
-    const existingPhone = await Employee.findOne({ phone: payload.phone, _id: { $ne: employeeId } });
-    if (existingPhone) {
-      throw new AppError('Phone number already exists', 409);
-    }
-  }
-
-  const previousProfilePhoto = employee.profilePhoto?.publicId || employee.profilePhoto?.url;
-  const profilePhoto = file ? await uploadImageBuffer(file, 'profile') : payload.profilePhoto;
-
-  Object.assign(employee, payload, {
-    ...(profilePhoto ? { profilePhoto } : {})
-  });
-
-  try {
-    await employee.save();
-  } catch (error) {
-    if (file && profilePhoto?.publicId) await deleteUploadedImage(profilePhoto.publicId);
-    throw error;
-  }
-
-  if (file && previousProfilePhoto) await deleteUploadedImage(previousProfilePhoto);
-
-  return getEmployeeById(employee._id);
-};
-
-export const getEmployeeSecurity = async (employeeId) => {
-  const employee = await Employee.findById(employeeId);
-  if (!employee) throw new AppError('Employee not found', 404);
-
-  const activeSessions = await RefreshToken.countDocuments({
-    employee: employeeId,
-    revokedAt: { $exists: false },
-    expiresAt: { $gt: new Date() }
-  });
+  const items = (data || []).map(mapEmployeeFromDb);
+  const total = count || items.length;
 
   return {
-    lastPasswordChange: employee.passwordChangedAt || employee.createdAt,
-    forcePasswordChange: employee.forcePasswordChange,
-    activeSessions
+    items,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit) || 1
+    }
   };
 };
 
-export const logoutEmployeeFromAllDevices = async (employeeId) => {
-  const employee = await Employee.findById(employeeId).select('+tokenVersion');
-  if (!employee) throw new AppError('Employee not found', 404);
+export const getEmployeeById = async (employeeId) => {
+  const { data: userRow, error } = await supabase
+    .from('employees')
+    .select('*')
+    .eq('id', employeeId)
+    .single();
 
-  employee.tokenVersion = (employee.tokenVersion || 0) + 1;
-  await employee.save();
+  if (error || !userRow) {
+    throw new AppError('Employee not found', 404);
+  }
 
-  await RefreshToken.deleteMany({ employee: employee._id });
-
-  return getEmployeeById(employee._id);
+  return mapEmployeeFromDb(userRow);
 };
+
+export const updateEmployee = async (employeeId, payload) => {
+  const updateData = {
+    updated_at: new Date().toISOString()
+  };
+
+  if (payload.name) updateData.name = payload.name;
+  if (payload.email) updateData.email = payload.email.trim().toLowerCase();
+  if (payload.department) updateData.department = payload.department;
+  if (payload.designation) updateData.designation = payload.designation;
+  if (payload.role) updateData.role = payload.role.toLowerCase() === 'admin' ? 'admin' : 'employee';
+  if (payload.status !== undefined) updateData.is_active = payload.status === 'ACTIVE';
+  if (payload.leaveBalanceCasual !== undefined) updateData.leave_balance_casual = Number(payload.leaveBalanceCasual);
+  if (payload.leaveBalanceSick !== undefined) updateData.leave_balance_sick = Number(payload.leaveBalanceSick);
+
+  if (payload.password) {
+    updateData.password_hash = await hashPassword(payload.password);
+  }
+
+  const { data: updatedRow, error } = await supabase
+    .from('employees')
+    .update(updateData)
+    .eq('id', employeeId)
+    .select('*')
+    .single();
+
+  if (error || !updatedRow) {
+    throw new AppError(`Failed to update employee: ${error?.message || 'Record not found'}`, 404);
+  }
+
+  return mapEmployeeFromDb(updatedRow);
+};
+
+export const setEmployeeStatus = async (employeeId, status) => {
+  const { data: updatedRow, error } = await supabase
+    .from('employees')
+    .update({
+      is_active: status === 'ACTIVE',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', employeeId)
+    .select('*')
+    .single();
+
+  if (error || !updatedRow) {
+    throw new AppError('Employee not found', 404);
+  }
+
+  return mapEmployeeFromDb(updatedRow);
+};
+
+export const deactivateEmployee = (employeeId) => setEmployeeStatus(employeeId, 'INACTIVE');
+export const activateEmployee = (employeeId) => setEmployeeStatus(employeeId, 'ACTIVE');
+
+export const getProfile = (employeeId) => getEmployeeById(employeeId);
+export const updateProfile = (employeeId, payload) => updateEmployee(employeeId, payload);
