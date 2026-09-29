@@ -13,7 +13,7 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '15m',
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret_minimum_32_characters_dev',
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
-  uploadRoot: process.env.UPLOAD_ROOT || (isProduction ? '/var/www/sharpkode/uploads' : 'uploads'),
+  uploadRoot: process.env.UPLOAD_ROOT || (isProduction ? '/tmp/kodewar/uploads' : 'uploads'),
   organizationTimezone: process.env.ORGANIZATION_TIMEZONE || 'Asia/Kolkata',
   defaultOfficeLatitude: Number(process.env.OFFICE_LATITUDE || 17.72861938927439),
   defaultOfficeLongitude: Number(process.env.OFFICE_LONGITUDE || 83.3146940456679),

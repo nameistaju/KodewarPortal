@@ -44,7 +44,11 @@ const resolveInsideUploadRoot = (...segments) => {
 };
 
 export const ensureUploadDirectories = async () => {
-  await fs.mkdir(resolveInsideUploadRoot('profile'), { recursive: true });
+  try {
+    await fs.mkdir(resolveInsideUploadRoot('profile'), { recursive: true });
+  } catch (error) {
+    logger.warn('Could not create upload directory', { error: error.message });
+  }
 };
 
 export const uploadImageBuffer = async (file, folder = 'profile') => {
