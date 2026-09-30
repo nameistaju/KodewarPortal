@@ -10,6 +10,7 @@ import Attendance from "./pages/Attendance"
 import AdminAttendance from "./pages/AdminAttendance"
 import Leave from "./pages/Leave"
 import Settings from "./pages/Settings"
+import Chat from "./pages/Chat"
 import LoginForm from "./components/LoginForm"
 import Announcements from "./pages/Announcements"
 import Teams from "./pages/Teams"
@@ -65,6 +66,7 @@ const App = () => {
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />}/>
+            <Route path="/chat" element={<Chat />}/>
             <Route path="/attendance" element={<Attendance />}/>
             <Route path="/leave" element={<Leave />}/>
             <Route path="/announcements" element={<Announcements />}/>

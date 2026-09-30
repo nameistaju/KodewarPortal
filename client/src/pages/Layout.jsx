@@ -8,7 +8,7 @@ import api from "../api/axios"
 import { motion, AnimatePresence } from "framer-motion"
 import { useEffect, useState } from "react"
 import {
-  LayoutGrid, Calendar, Settings,
+  LayoutGrid, Calendar, Settings, MessageSquare,
   Bell, Smartphone, X, Download, ShieldCheck, FileText, User, LogOut,
   MoreHorizontal, Share2
 } from "lucide-react"
@@ -167,6 +167,7 @@ const Layout = () => {
   // Mobile Bottom Bar Primary Destinations (Home, Attendance, Leave, More)
   const mobileNavDestinations = [
     { name: "Home", href: "/dashboard", icon: LayoutGrid },
+    { name: "Chat", href: "/chat", icon: MessageSquare },
     { name: "Attendance", href: role === "ADMIN" ? "/admin-attendance" : "/attendance", icon: Calendar },
     { name: "Leave", href: "/leave", icon: FileText },
   ]

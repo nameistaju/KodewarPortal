@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {Link, useLocation} from 'react-router-dom'
 import {
   BellIcon, CalendarIcon, 
-  UsersRoundIcon, 
+  UsersRoundIcon, MessageSquareIcon,
   ChevronRightIcon, ChevronLeftIcon, 
   FileTextIcon, LayoutGridIcon, Loader2, LogOutIcon, 
   MenuIcon, SettingsIcon, UserIcon, XIcon
@@ -44,6 +44,7 @@ const Sidebar = () => {
 
     const employeeNavigation = [
         {name: "Dashboard", href: "/dashboard", icon: LayoutGridIcon},
+        {name: "Chat", href: "/chat", icon: MessageSquareIcon},
         {name: "Attendance", href: "/attendance", icon: CalendarIcon},
         {name: "Leave", href: "/leave", icon: FileTextIcon},
         {name: "Announcements", href: "/announcements", icon: BellIcon},
@@ -52,6 +53,7 @@ const Sidebar = () => {
 
     const adminNavigation = [
         {name: "Dashboard", href: "/dashboard", icon: LayoutGridIcon},
+        {name: "Chat", href: "/chat", icon: MessageSquareIcon},
         {name: "Attendance", href: "/admin-attendance", icon: CalendarIcon},
         {name: "Leave Requests", href: "/leave", icon: FileTextIcon},
         {name: "Employees", href: "/employees", icon: UserIcon},
