@@ -31,7 +31,7 @@ export const sendTextMessageSchema = z.object({
 
 export const sendMediaMessageSchema = z.object({
   messageType: z.enum(['IMAGE', 'VOICE']),
-  content: z.preprocess(emptyToUndefined, z.string().trim().max(2000).optional()),
+  content: z.preprocess(emptyToUndefined, z.string().trim().max(500, 'Image caption cannot exceed 500 characters').optional()),
   duration: z.preprocess(
     (val) => (val !== undefined && val !== null && val !== '' ? Number(val) : undefined),
     z.number().min(0).max(120, 'Voice note duration cannot exceed 2 minutes (120 seconds)').optional()
