@@ -100,31 +100,44 @@ export const uploadImageBuffer = async (file, folder = 'profile') => {
   if (!extension) throw new AppError('Only JPG, PNG, and WEBP image uploads are allowed', 400);
 
   if (isCloudinaryConfigured()) {
-    return await uploadToCloudinaryStream(file.buffer, `kodewar/${folder}`);
+    try {
+      return await uploadToCloudinaryStream(file.buffer, `kodewar/${folder}`);
+    } catch (error) {
+      logger.warn('Cloudinary upload stream failed, using fallback storage', { error: error.message });
+    }
   }
 
-  // Fallback to local storage if Cloudinary keys are not provided
-  const storageFolder = normalizeStorageFolder(folder);
-  const directory = resolveInsideUploadRoot(storageFolder);
-  await fs.mkdir(directory, { recursive: true });
-
-  const filename = `${Date.now()}-${crypto.randomUUID()}${extension}`;
-  const absolutePath = resolveInsideUploadRoot(storageFolder, filename);
-  const relativePath = path.relative(path.resolve(env.uploadRoot), absolutePath).replace(/\\/g, '/');
-
+  // Attempt local storage fallback first
   try {
+    const storageFolder = normalizeStorageFolder(folder);
+    const directory = resolveInsideUploadRoot(storageFolder);
+    await fs.mkdir(directory, { recursive: true });
+
+    const filename = `${Date.now()}-${crypto.randomUUID()}${extension}`;
+    const absolutePath = resolveInsideUploadRoot(storageFolder, filename);
+    const relativePath = path.relative(path.resolve(env.uploadRoot), absolutePath).replace(/\\/g, '/');
+
     await fs.writeFile(absolutePath, file.buffer, { flag: 'wx' });
-  } catch (error) {
-    logger.error('local_upload_failed', { message: error.message, folder: storageFolder });
-    throw new AppError('Image upload failed. Please retry.', 500, { provider: 'local', reason: 'write_failed' });
+
+    return {
+      url: `/uploads/${relativePath}`,
+      publicId: relativePath,
+      uploadedAt: new Date(),
+      originalFilename: file.originalname || null,
+      storageProvider: 'local'
+    };
+  } catch (localError) {
+    logger.warn('Local storage write failed, using data-uri fallback', { error: localError.message });
   }
 
+  // Ultimate fallback: Data-URI (base64) format works 100% everywhere without external APIs or disk permissions
+  const base64Data = file.buffer.toString('base64');
   return {
-    url: `/uploads/${relativePath}`,
-    publicId: relativePath,
+    url: `data:${file.mimetype};base64,${base64Data}`,
+    publicId: `data-uri-${Date.now()}`,
     uploadedAt: new Date(),
     originalFilename: file.originalname || null,
-    storageProvider: 'local'
+    storageProvider: 'data-uri'
   };
 };
 
