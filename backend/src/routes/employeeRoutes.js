@@ -29,31 +29,30 @@ router.patch(
   employeeController.updateProfile
 );
 
+router.get('/', validate({ query: employeeQuerySchema }), employeeController.getEmployees);
+router.get('/:employeeId', validate({ params: employeeIdParamsSchema }), employeeController.getEmployeeById);
+
 router.use(authorizeRoles(ROLES.ADMIN));
 
-router
-  .route('/')
-  .post(
-    writeLimiter,
-    uploadLimiter,
-    upload.single('profilePhoto'),
-    validateImageUpload,
-    validate({ body: createEmployeeSchema }),
-    employeeController.createEmployee
-  )
-  .get(validate({ query: employeeQuerySchema }), employeeController.getEmployees);
+router.post(
+  '/',
+  writeLimiter,
+  uploadLimiter,
+  upload.single('profilePhoto'),
+  validateImageUpload,
+  validate({ body: createEmployeeSchema }),
+  employeeController.createEmployee
+);
 
-router
-  .route('/:employeeId')
-  .get(validate({ params: employeeIdParamsSchema }), employeeController.getEmployeeById)
-  .patch(
-    writeLimiter,
-    uploadLimiter,
-    upload.single('profilePhoto'),
-    validateImageUpload,
-    validate({ params: employeeIdParamsSchema, body: updateEmployeeSchema }),
-    employeeController.updateEmployee
-  );
+router.patch(
+  '/:employeeId',
+  writeLimiter,
+  uploadLimiter,
+  upload.single('profilePhoto'),
+  validateImageUpload,
+  validate({ params: employeeIdParamsSchema, body: updateEmployeeSchema }),
+  employeeController.updateEmployee
+);
 
 router.post(
   '/:employeeId/deactivate',
