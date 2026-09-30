@@ -34,8 +34,7 @@ const LoginForm = () => {
       const path = mustChange
         ? '/change-password'
         : (authUser?.role === 'ADMIN' ? '/admin/dashboard' : '/dashboard')
-      setTargetPath(path)
-      setIsLoggingIn(true)
+      navigate(path, { replace: true })
     } catch (error) {
       toast.error(getErrorMessage(error) || 'Invalid email or password.')
       setLoading(false)
@@ -45,10 +44,6 @@ const LoginForm = () => {
   const handleForgotPassword = (e) => {
     e.preventDefault()
     toast.info('Please contact your system administrator to reset your password.')
-  }
-
-  if (isLoggingIn) {
-    return <Loading onComplete={() => navigate(targetPath || '/dashboard')} />
   }
 
   return (
