@@ -9,16 +9,16 @@ const getDashboardState = (isPunchedIn) => {
 
   let timeState = {
     greeting: 'Good Morning',
-    bg: '/bgforLogin_desktop.png',
-    mobileBg: '/bgforLogin_mobile.png',
+    bg: '/mrngState.png',
+    mobileBg: '/mrngState.png',
     character: '/okayState.png'
   };
 
   if (hour >= 5 && hour < 12) {
     timeState = {
       greeting: 'Good Morning',
-      bg: '/bgforLogin_desktop.png',
-      mobileBg: '/bgforLogin_mobile.png',
+      bg: '/mrngState.png',
+      mobileBg: '/mrngState.png',
       character: '/okayState.png'
     };
   } else if (hour >= 12 && hour < 17) {
@@ -39,7 +39,7 @@ const getDashboardState = (isPunchedIn) => {
     timeState = {
       greeting: 'Good Night',
       bg: '/Nightsate.png',
-      mobileBg: '/bgforLogin_mobile.png',
+      mobileBg: '/Nightsate.png',
       character: '/randomState.png'
     };
   }
