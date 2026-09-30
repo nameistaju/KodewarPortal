@@ -24,6 +24,27 @@ const App = () => {
   const location = useLocation()
   const { loading: authLoading } = useAuth()
 
+  const [showInitialLoader, setShowInitialLoader] = useState(() => {
+    try {
+      return !sessionStorage.getItem("hasSeenInitialLoader")
+    } catch {
+      return false
+    }
+  })
+
+  const handleInitialLoaderComplete = useCallback(() => {
+    try {
+      sessionStorage.setItem("hasSeenInitialLoader", "true")
+    } catch {
+      // ignore storage error
+    }
+    setShowInitialLoader(false)
+  }, [])
+
+  if (showInitialLoader) {
+    return <Loading onComplete={handleInitialLoaderComplete} />
+  }
+
   const isAuthPage = location.pathname === '/login' || location.pathname.startsWith('/login/')
 
   if (authLoading) {
