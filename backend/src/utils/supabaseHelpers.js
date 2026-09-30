@@ -5,6 +5,20 @@ export const mapEmployeeFromDb = (row) => {
 
   const roleUpper = (row.role || 'employee').toUpperCase();
 
+  let cleanDesignation = row.designation || 'Staff';
+  let profilePhoto = null;
+
+  if (row.designation && row.designation.includes('||')) {
+    const [desig, photoUrl, publicId] = row.designation.split('||');
+    cleanDesignation = desig || 'Staff';
+    if (photoUrl) {
+      profilePhoto = {
+        url: photoUrl,
+        publicId: publicId || ''
+      };
+    }
+  }
+
   return {
     _id: String(row.id),
     id: String(row.id),
@@ -12,7 +26,10 @@ export const mapEmployeeFromDb = (row) => {
     name: row.name || 'Employee',
     email: row.email || '',
     department: row.department || 'GENERAL',
-    designation: row.designation || 'Staff',
+    designation: cleanDesignation,
+    profilePhoto,
+    profilePhotoUrl: profilePhoto?.url || null,
+    avatar: profilePhoto?.url || null,
     role: roleUpper,
     status: row.is_active !== false ? 'ACTIVE' : 'INACTIVE',
     joinDate: row.joining_date || row.created_at || new Date().toISOString(),

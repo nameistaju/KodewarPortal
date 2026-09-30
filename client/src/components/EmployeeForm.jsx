@@ -29,6 +29,31 @@ const EmployeeForm = ({ initialData, onSuccess, onCancel, onSuccessStateChange }
   const [teamIdVal, setTeamIdVal] = useState(initialData?.teamId?._id || initialData?.teamId || "");
   const [tracksAttendanceVal, setTracksAttendanceVal] = useState(initialData?.tracksAttendance ?? true);
 
+  // Profile photo state
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(initialData?.profilePhoto?.url || initialData?.avatar || null);
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Only JPG, PNG, and WEBP images are allowed.');
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image size must be less than 10MB.');
+      e.target.value = '';
+      return;
+    }
+
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
   // Single password source of truth for creation mode / edit mode password change
   const [passwordVal, setPasswordVal] = useState(() => isEditMode ? "" : generateSecurePassword());
   const [showPassword, setShowPassword] = useState(false);
@@ -237,7 +262,53 @@ const EmployeeForm = ({ initialData, onSuccess, onCancel, onSuccessStateChange }
     setLoading(true);
 
     try {
-      if (isEditMode) {
+      if (photoFile) {
+        const formData = new FormData();
+        formData.append("profilePhoto", photoFile);
+        formData.append("name", nameVal.trim());
+        formData.append("role", roleVal);
+        if (emailVal) formData.append("email", emailVal.trim().toLowerCase());
+        if (phoneVal) formData.append("phone", phoneVal);
+        if (departmentVal) formData.append("department", departmentVal);
+        if (dobVal) formData.append("dob", dobVal);
+        if (joinDateVal) formData.append("joinDate", joinDateVal);
+        if (teamIdVal) formData.append("teamId", teamIdVal);
+        formData.append("tracksAttendance", tracksAttendanceVal);
+
+        if (isEditMode) {
+          formData.append("forcePasswordChange", forceChange);
+          if (changePassword) {
+            if (passwordVal !== confirmPasswordVal) {
+              toast.error("Passwords do not match");
+              setLoading(false);
+              return;
+            }
+            if (passwordVal.length < 8) {
+              toast.error("Password must be at least 8 characters long");
+              setLoading(false);
+              return;
+            }
+            formData.append("password", passwordVal);
+          }
+
+          await api.patch(`/employees/${initialData._id}`, formData);
+          toast.success(changePassword ? "Password updated successfully" : "Employee updated successfully");
+          onSuccess?.();
+        } else {
+          formData.append("password", passwordVal);
+
+          const res = await api.post("/employees", formData);
+          toast.success("Employee created successfully");
+
+          const returnedPassword = res.data?.data?.generatedPassword || passwordVal;
+          setSuccessData({
+            name: nameVal.trim(),
+            email: emailVal.trim().toLowerCase(),
+            role: roleVal,
+            password: returnedPassword
+          });
+        }
+      } else if (isEditMode) {
         const payload = {
           name: nameVal,
           phone: phoneVal,
@@ -480,6 +551,34 @@ const EmployeeForm = ({ initialData, onSuccess, onCancel, onSuccessStateChange }
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-medium">
+                {/* Profile Photo File Upload */}
+                <div className="flex items-center gap-4 p-4 rounded-2xl border border-neutral-200 bg-neutral-50 sm:col-span-2">
+                  <div className="relative shrink-0">
+                    {photoPreview ? (
+                      <img src={photoPreview} alt="Preview" className="w-14 h-14 rounded-2xl object-cover border border-neutral-300 shadow-xs" />
+                    ) : (
+                      <div className="w-14 h-14 rounded-2xl bg-black text-white font-extrabold flex items-center justify-center text-lg border border-neutral-800">
+                        {nameVal ? nameVal.slice(0, 2).toUpperCase() : "EP"}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <label htmlFor="photoUpload" className="block text-xs font-bold text-black cursor-pointer">
+                      Profile Photo (Cloudinary)
+                    </label>
+                    <input
+                      id="photoUpload"
+                      name="profilePhoto"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      disabled={loading}
+                      onChange={handlePhotoChange}
+                      className="w-full text-xs text-neutral-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-black file:text-white hover:file:bg-neutral-800 cursor-pointer"
+                    />
+                    <p className="text-[10px] text-neutral-400 font-medium">JPG, PNG, or WEBP (Max 10MB). Uploaded securely to Cloudinary.</p>
+                  </div>
+                </div>
+
                 {/* Full Name */}
                 <div>
                   <label htmlFor="profileName" className="block mb-1.5 font-bold text-black">

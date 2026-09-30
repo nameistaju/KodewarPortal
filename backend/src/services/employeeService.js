@@ -2,8 +2,9 @@ import { supabase } from '../config/supabase.js';
 import AppError from '../utils/AppError.js';
 import { hashPassword, mapEmployeeFromDb } from '../utils/supabaseHelpers.js';
 import { generateTemporaryPassword } from '../utils/password.js';
+import { uploadImageBuffer, deleteUploadedImage } from './uploadService.js';
 
-export const createEmployee = async (payload) => {
+export const createEmployee = async (payload, _creatorId, file) => {
   // Check if email exists
   const { data: existingEmail } = await supabase
     .from('employees')
@@ -27,13 +28,21 @@ export const createEmployee = async (payload) => {
   const passwordHash = await hashPassword(passwordToUse);
   const employeeCode = payload.employeeCode || `EMP-${Date.now().toString().slice(-4)}`;
 
+  let designationStr = payload.designation || 'Staff';
+  if (file) {
+    const uploadRes = await uploadImageBuffer(file, 'profile');
+    if (uploadRes?.url) {
+      designationStr = `${designationStr}||${uploadRes.url}||${uploadRes.publicId || ''}`;
+    }
+  }
+
   const insertData = {
     employee_code: employeeCode,
     name: payload.name,
     email: payload.email.trim().toLowerCase(),
     password_hash: passwordHash,
     department: payload.department || 'DEVELOPMENT',
-    designation: payload.designation || 'Staff',
+    designation: designationStr,
     joining_date: payload.joiningDate || new Date().toISOString().slice(0, 10),
     role: userRole === 'admin' ? 'admin' : 'employee',
     leave_balance_casual: payload.leaveBalanceCasual ?? 12,
@@ -117,7 +126,34 @@ export const getEmployeeById = async (employeeId) => {
   return mapEmployeeFromDb(userRow);
 };
 
-export const updateEmployee = async (employeeId, payload) => {
+export const updateEmployee = async (employeeId, payload, _adminId, file) => {
+  const { data: existingRow } = await supabase
+    .from('employees')
+    .select('*')
+    .eq('id', employeeId)
+    .single();
+
+  if (!existingRow) {
+    throw new AppError('Employee not found', 404);
+  }
+
+  let cleanDesig = payload.designation || (existingRow.designation ? existingRow.designation.split('||')[0] : 'Staff');
+  let currentPhotoUrl = existingRow.designation && existingRow.designation.includes('||') ? existingRow.designation.split('||')[1] : null;
+  let currentPublicId = existingRow.designation && existingRow.designation.includes('||') ? existingRow.designation.split('||')[2] : null;
+
+  if (file) {
+    // Delete existing photo from Cloudinary if present
+    if (currentPublicId || currentPhotoUrl) {
+      await deleteUploadedImage(currentPublicId || currentPhotoUrl);
+    }
+
+    const uploadRes = await uploadImageBuffer(file, 'profile');
+    if (uploadRes?.url) {
+      currentPhotoUrl = uploadRes.url;
+      currentPublicId = uploadRes.publicId || '';
+    }
+  }
+
   const updateData = {
     updated_at: new Date().toISOString()
   };
@@ -125,7 +161,9 @@ export const updateEmployee = async (employeeId, payload) => {
   if (payload.name) updateData.name = payload.name;
   if (payload.email) updateData.email = payload.email.trim().toLowerCase();
   if (payload.department) updateData.department = payload.department;
-  if (payload.designation) updateData.designation = payload.designation;
+
+  updateData.designation = currentPhotoUrl ? `${cleanDesig}||${currentPhotoUrl}||${currentPublicId || ''}` : cleanDesig;
+
   if (payload.role) updateData.role = payload.role.toLowerCase() === 'admin' ? 'admin' : 'employee';
   if (payload.status !== undefined) updateData.is_active = payload.status === 'ACTIVE';
   if (payload.leaveBalanceCasual !== undefined) updateData.leave_balance_casual = Number(payload.leaveBalanceCasual);
@@ -171,7 +209,7 @@ export const deactivateEmployee = (employeeId) => setEmployeeStatus(employeeId, 
 export const activateEmployee = (employeeId) => setEmployeeStatus(employeeId, 'ACTIVE');
 
 export const getProfile = (employeeId) => getEmployeeById(employeeId);
-export const updateProfile = (employeeId, payload) => updateEmployee(employeeId, payload);
+export const updateProfile = (employeeId, payload, file) => updateEmployee(employeeId, payload, null, file);
 
 export const getEmployeeSecurity = async (employeeId) => {
   const emp = await getEmployeeById(employeeId);
