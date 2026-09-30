@@ -13,6 +13,7 @@ import holidayRoutes from './routes/holidayRoutes.js';
 import announcementRoutes from './routes/announcementRoutes.js';
 import teamRoutes from './routes/teamRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { apiLimiter } from './middleware/rateLimiters.js';
@@ -172,6 +173,7 @@ app.use('/api/holidays', holidayRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/chat', chatRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

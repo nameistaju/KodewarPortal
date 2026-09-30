@@ -178,3 +178,67 @@ export const deleteUploadedImage = async (publicIdOrUrl) => {
     logger.error('local_upload_cleanup_failed', { publicId: cleanPath, message: error.message });
   }
 };
+
+export const uploadChatMediaBuffer = async (file, isVoice = false) => {
+  if (!file) return null;
+
+  const folder = isVoice ? 'kodewar/chat/voice' : 'kodewar/chat/images';
+  const resourceType = isVoice ? 'video' : 'image';
+
+  if (isCloudinaryConfigured()) {
+    try {
+      return await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder,
+            resource_type: resourceType,
+            ...(isVoice ? {} : { transformation: [{ width: 1200, height: 1200, crop: 'limit', quality: 'auto' }] })
+          },
+          (error, result) => {
+            if (error) {
+              logger.warn('cloudinary_chat_upload_failed', { message: error.message });
+              reject(error);
+            } else {
+              resolve({
+                url: result.secure_url,
+                publicId: result.public_id,
+                resourceType,
+                size: file.size || result.bytes || 0,
+                duration: result.duration || 0,
+                storageProvider: 'cloudinary'
+              });
+            }
+          }
+        );
+        uploadStream.end(file.buffer);
+      });
+    } catch (err) {
+      logger.warn('Cloudinary chat media upload failed, falling back to data-uri', { error: err.message });
+    }
+  }
+
+  // Fallback to Data-URI format if Cloudinary upload fails
+  const base64Data = file.buffer.toString('base64');
+  return {
+    url: `data:${file.mimetype};base64,${base64Data}`,
+    publicId: `data-uri-chat-${Date.now()}`,
+    resourceType,
+    size: file.size || 0,
+    duration: 0,
+    storageProvider: 'data-uri'
+  };
+};
+
+export const deleteChatMedia = async (publicId, resourceType = 'image') => {
+  if (!publicId || publicId.startsWith('data-uri-')) return;
+
+  if (isCloudinaryConfigured()) {
+    try {
+      await cloudinary.uploader.destroy(publicId, { resource_type: resourceType || 'image' });
+      logger.info('Deleted chat media from Cloudinary', { publicId, resourceType });
+    } catch (error) {
+      logger.warn('Failed to delete chat media from Cloudinary', { publicId, resourceType, message: error.message });
+    }
+  }
+};
+

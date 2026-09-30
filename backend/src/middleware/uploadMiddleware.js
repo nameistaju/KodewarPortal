@@ -71,3 +71,53 @@ export const upload = multer({
     fileSize: 10 * 1024 * 1024
   }
 });
+
+const allowedChatMimeTypes = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'audio/webm',
+  'audio/ogg',
+  'audio/mp4',
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/wav',
+  'audio/m4a',
+  'audio/x-m4a',
+  'audio/aac'
+]);
+
+const chatFileFilter = (_req, file, cb) => {
+  if (!allowedChatMimeTypes.has(file.mimetype)) {
+    cb(
+      new AppError(
+        'Invalid chat media format. Only JPG, PNG, WEBP images and WebM, OGG, MP4, MP3, WAV, M4A, AAC voice notes are allowed.',
+        400
+      ),
+      false
+    );
+    return;
+  }
+  cb(null, true);
+};
+
+export const uploadChatMedia = multer({
+  storage,
+  fileFilter: chatFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5 MB
+  }
+});
+
+export const validateChatMediaUpload = (req, _res, next) => {
+  if (!req.file) {
+    next(new AppError('Media file is required for image or voice note uploads', 400));
+    return;
+  }
+  if (req.file.size > 5 * 1024 * 1024) {
+    next(new AppError('File size exceeds the 5MB limit', 413));
+    return;
+  }
+  next();
+};
+

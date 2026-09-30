@@ -6,6 +6,7 @@ import { runDevelopmentBootstrap } from './utils/devBootstrap.js';
 import logger from './utils/logger.js';
 import { ensureUploadDirectories } from './services/uploadService.js';
 import { startAutoCloseScheduler, stopAutoCloseScheduler } from './services/attendanceAutoCloseService.js';
+import { startChatCleanupScheduler, stopChatCleanupScheduler } from './services/chatCleanupScheduler.js';
 
 const PORT = env.port;
 let server;
@@ -15,6 +16,7 @@ const startServer = async () => {
   await connectDB();
   await runDevelopmentBootstrap();
   startAutoCloseScheduler();
+  startChatCleanupScheduler();
 
   server = app.listen(PORT, () => {
     logger.info('KODEWAR API started', {
@@ -27,6 +29,7 @@ const startServer = async () => {
 const shutdown = async (signal) => {
   logger.info('Shutdown signal received', { signal });
   stopAutoCloseScheduler();
+  stopChatCleanupScheduler();
 
   if (server) {
     server.close(async () => {
