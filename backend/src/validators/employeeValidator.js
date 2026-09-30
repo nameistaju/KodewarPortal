@@ -2,12 +2,28 @@ import { z } from 'zod';
 import { DEPARTMENTS, EMPLOYEE_STATUS, ROLES } from '../constants/index.js';
 import { objectId, paginationQuerySchema } from './commonValidator.js';
 
-const profilePhotoSchema = z
-  .object({
-    url: z.string().url().optional(),
-    publicId: z.string().trim().optional()
-  })
-  .optional();
+const emptyToUndefined = (val) =>
+  typeof val === 'string' && val.trim() === ''
+    ? undefined
+    : val === null || val === 'null' || val === 'undefined'
+      ? undefined
+      : val;
+
+const boolPreprocess = (val) => {
+  if (val === 'true' || val === true) return true;
+  if (val === 'false' || val === false) return false;
+  return emptyToUndefined(val);
+};
+
+const profilePhotoSchema = z.preprocess(
+  (val) => (typeof val === 'string' || val === null ? undefined : val),
+  z
+    .object({
+      url: z.string().url().optional(),
+      publicId: z.string().trim().optional()
+    })
+    .optional()
+);
 
 export const employeeIdParamsSchema = z.object({
   employeeId: objectId
@@ -28,20 +44,23 @@ const passwordComplexitySchema = z.string()
   .refine((val) => /[^A-Za-z0-9]/.test(val), 'Password must contain at least one special character');
 
 const employeeBaseSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  phone: z.string().trim().min(7).max(20).optional(),
+  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(120),
+  phone: z.preprocess(
+    emptyToUndefined,
+    z.string().trim().min(7, 'Phone number must be at least 7 digits').max(20).optional()
+  ),
   email: z.string().trim().toLowerCase().email(),
-  department: z.enum(Object.values(DEPARTMENTS)).optional(),
-  dob: z.coerce.date().optional(),
-  joinDate: z.coerce.date().optional(),
+  department: z.preprocess(emptyToUndefined, z.enum(Object.values(DEPARTMENTS)).optional()),
+  dob: z.preprocess(emptyToUndefined, z.coerce.date().optional()),
+  joinDate: z.preprocess(emptyToUndefined, z.coerce.date().optional()),
   role: z.enum(Object.values(ROLES)).default(ROLES.EMPLOYEE),
-  teamId: z.preprocess((value) => (value === '' || value === null ? undefined : value), objectId.optional()),
-  status: z.enum(Object.values(EMPLOYEE_STATUS)).optional(),
+  teamId: z.preprocess(emptyToUndefined, objectId.optional()),
+  status: z.preprocess(emptyToUndefined, z.enum(Object.values(EMPLOYEE_STATUS)).optional()),
   profilePhoto: profilePhotoSchema,
   assignedClients: z.array(objectId).optional(),
-  autoGeneratePassword: z.boolean().optional(),
-  tracksAttendance: z.boolean().optional(),
-  password: passwordComplexitySchema.optional()
+  autoGeneratePassword: z.preprocess(boolPreprocess, z.boolean().optional()),
+  tracksAttendance: z.preprocess(boolPreprocess, z.boolean().optional()),
+  password: z.preprocess(emptyToUndefined, passwordComplexitySchema.optional())
 });
 
 export const createEmployeeSchema = employeeBaseSchema.refine((data) => data.autoGeneratePassword || data.password, {
@@ -53,14 +72,22 @@ export const updateEmployeeSchema = employeeBaseSchema
   .partial()
   .omit({ email: true, password: true })
   .extend({
+    name: z.preprocess(emptyToUndefined, z.string().trim().min(2, 'Name must be at least 2 characters').max(120).optional()),
     assignedClients: z.array(objectId).optional(),
-    password: passwordComplexitySchema.optional(),
-    forcePasswordChange: z.boolean().optional()
+    password: z.preprocess(emptyToUndefined, passwordComplexitySchema.optional()),
+    forcePasswordChange: z.preprocess(boolPreprocess, z.boolean().optional())
   });
 
 export const updateProfileSchema = z.object({
-  name: z.string().trim().min(2).max(120).optional(),
-  phone: z.string().trim().min(7).max(20).optional(),
+  name: z.preprocess(
+    emptyToUndefined,
+    z.string().trim().min(2, 'Name must be at least 2 characters').max(120).optional()
+  ),
+  phone: z.preprocess(
+    emptyToUndefined,
+    z.string().trim().min(7, 'Phone number must be at least 7 digits').max(20).optional()
+  ),
   profilePhoto: profilePhotoSchema
 });
+
 
