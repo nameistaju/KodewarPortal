@@ -15,6 +15,8 @@ export const mapEmployeeFromDb = (row) => {
     designation: row.designation || 'Staff',
     role: roleUpper,
     status: row.is_active !== false ? 'ACTIVE' : 'INACTIVE',
+    joinDate: row.joining_date || row.created_at || new Date().toISOString(),
+    joiningDate: row.joining_date || row.created_at || new Date().toISOString(),
     tracksAttendance: roleUpper === 'EMPLOYEE',
     forcePasswordChange: false,
     mustChangePassword: false,

@@ -9,16 +9,16 @@ const getDashboardState = (isPunchedIn) => {
 
   let timeState = {
     greeting: 'Good Morning',
-    bg: '/bg1-desktop.png',
-    mobileBg: '/bg1-mobile.png',
+    bg: '/bgforLogin_desktop.png',
+    mobileBg: '/bgforLogin_mobile.png',
     character: '/okayState.png'
   };
 
   if (hour >= 5 && hour < 12) {
     timeState = {
       greeting: 'Good Morning',
-      bg: '/bg1-desktop.png',
-      mobileBg: '/bg1-mobile.png',
+      bg: '/bgforLogin_desktop.png',
+      mobileBg: '/bgforLogin_mobile.png',
       character: '/okayState.png'
     };
   } else if (hour >= 12 && hour < 17) {

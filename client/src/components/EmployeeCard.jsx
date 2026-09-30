@@ -23,13 +23,17 @@ const EmployeeCard = ({ employee, onDelete, onEdit }) => {
     }
   };
 
-  const joinDateFormatted = new Date(employee.joinDate).toLocaleDateString([], {
-    year: 'numeric', month: 'short', day: 'numeric'
-  });
-  
-  const lastActiveFormatted = new Date(employee.updatedAt).toLocaleDateString([], {
-    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-  });
+  const rawJoinDate = employee.joinDate || employee.joiningDate || employee.createdAt;
+  const joinDateObj = rawJoinDate ? new Date(rawJoinDate) : null;
+  const joinDateFormatted = joinDateObj && !isNaN(joinDateObj.getTime())
+    ? joinDateObj.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' })
+    : 'N/A';
+
+  const rawLastActive = employee.updatedAt || employee.createdAt;
+  const lastActiveObj = rawLastActive ? new Date(rawLastActive) : null;
+  const lastActiveFormatted = lastActiveObj && !isNaN(lastActiveObj.getTime())
+    ? lastActiveObj.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : 'N/A';
 
   return (
     <div className={`group relative overflow-hidden card p-6 shadow-sm transition-all duration-300 flex flex-col justify-between h-full border hover:-translate-y-0.5 hover:shadow-xl bg-white ${
