@@ -143,6 +143,7 @@ const AdminAttendance = () => {
 
         return {
           "Date": formatDate(row.date),
+          "Employee ID": row.employee?.employeeCode || row.employee?._id || "-",
           "Employee Name": row.employee?.name || "-",
           "Email": row.employee?.email || "-",
           "Department": row.employee?.department || "-",
@@ -157,7 +158,7 @@ const AdminAttendance = () => {
       const dateStr = filters.date || getLocalTodayIso()
 
       if (format === "csv") {
-        const headers = ["Date", "Employee Name", "Email", "Department", "Punch In", "Punch Out", "Working Hours", "Status", "Late By"]
+        const headers = ["Date", "Employee ID", "Employee Name", "Email", "Department", "Punch In", "Punch Out", "Working Hours", "Status", "Late By"]
         const escapeCsv = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`
         const csvContent = [headers.join(','), ...exportRows.map((r) => headers.map((h) => escapeCsv(r[h])).join(','))].join('\n')
         

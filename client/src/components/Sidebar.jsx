@@ -39,7 +39,8 @@ const Sidebar = () => {
         }
     }, [mobileOpen]);
 
-    const role = user?.role;
+    const normalizedRole = user?.role?.toUpperCase();
+    const role = normalizedRole === "ADMIN" ? "ADMIN" : "EMPLOYEE";
     const userName = employeeName(user);
 
     const employeeNavigation = [
@@ -127,7 +128,7 @@ const Sidebar = () => {
 
                 {/* Navigation List */}
                 <div className='flex-1 px-3 space-y-1.5 overflow-y-auto overflow-x-hidden mt-2'>
-                    {loading ? (
+                    {loading && !user ? (
                         <div className='px-3 py-3 flex items-center gap-2 text-neutral-500'>
                             <Loader2 className="animate-spin w-4 h-4 shrink-0" />
                             {!showCollapsed && <span className="text-sm">Loading...</span>}

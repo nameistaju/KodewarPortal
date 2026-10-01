@@ -55,6 +55,7 @@ export function AuthProvider({children}){
         localStorage.setItem("refreshToken", data.refreshToken)
         setToken(data.accessToken || data.token);
         setUser(data.user);
+        setLoading(false);
         return data.user;
     }
 

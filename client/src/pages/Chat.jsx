@@ -51,7 +51,7 @@ const Chat = () => {
     } finally {
       if (!silent) setLoadingConvs(false);
     }
-  }, [currentUserId, selectedConvId]);
+  }, [currentUserId]);
 
   // Execute conversation load once auth is resolved and currentUserId exists
   useEffect(() => {
