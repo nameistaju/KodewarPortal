@@ -15,8 +15,8 @@ import NewChatModal from '../components/chat/NewChatModal';
 import { isMessageExpired } from '../utils/chatTime';
 
 const Chat = () => {
-  const { user } = useAuth();
-  const currentUserId = user?._id || user?.id;
+  const { user, loading: authLoading } = useAuth();
+  const currentUserId = user?._id || user?.id || user?.employeeId;
 
   const [conversations, setConversations] = useState([]);
   const [selectedConvId, setSelectedConvId] = useState(null);
@@ -31,23 +31,38 @@ const Chat = () => {
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const pollIntervalRef = useRef(null);
 
-  // 1. Fetch user conversations
+  // 1. Fetch user conversations (Guarded by authenticated user ID)
   const fetchUserConversations = useCallback(async (silent = false) => {
+    if (!currentUserId) return;
+
     if (!silent) setLoadingConvs(true);
     try {
       const data = await getConversations();
       const list = data.conversations || [];
       setConversations(list);
+
+      // Auto-select first conversation on initial load if none selected
+      if (list.length > 0 && !selectedConvId) {
+        setSelectedConvId((prev) => prev || list[0]._id || list[0].id);
+      }
     } catch (err) {
+      console.error('Failed to load user conversations:', err);
       if (!silent) toast.error(getErrorMessage(err) || 'Failed to load conversations');
     } finally {
       if (!silent) setLoadingConvs(false);
     }
-  }, []);
+  }, [currentUserId, selectedConvId]);
 
+  // Execute conversation load once auth is resolved and currentUserId exists
   useEffect(() => {
-    fetchUserConversations();
-  }, [fetchUserConversations]);
+    if (authLoading) return;
+
+    if (currentUserId) {
+      fetchUserConversations();
+    } else {
+      setLoadingConvs(false);
+    }
+  }, [authLoading, currentUserId, fetchUserConversations]);
 
   // 2. Fetch messages for active conversation
   const fetchMessagesForConv = useCallback(
@@ -83,6 +98,7 @@ const Chat = () => {
           setTotalPages(data.pagination.totalPages);
         }
       } catch (err) {
+        console.error('Failed to load messages:', err);
         if (!appendOld) toast.error(getErrorMessage(err) || 'Failed to load messages');
       } finally {
         setLoadingMsgs(false);
@@ -103,6 +119,8 @@ const Chat = () => {
 
   // 3. Realtime / Polling update every 3.5 seconds
   useEffect(() => {
+    if (!currentUserId || authLoading) return;
+
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
 
     pollIntervalRef.current = setInterval(() => {
@@ -122,14 +140,16 @@ const Chat = () => {
               return Array.from(map.values());
             });
           })
-          .catch(() => {});
+          .catch((err) => {
+            console.error('Polling error:', err);
+          });
       }
     }, 3500);
 
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
-  }, [selectedConvId, fetchUserConversations]);
+  }, [currentUserId, authLoading, selectedConvId, fetchUserConversations]);
 
   // 4. Handle pagination load more
   const handleLoadMore = async () => {
