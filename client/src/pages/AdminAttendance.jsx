@@ -10,6 +10,7 @@ import {
   Search,
   X
 } from "lucide-react"
+import * as XLSX from "xlsx"
 import api from "../api/axios"
 import { useAuth } from "../context/AuthContext"
 import Avatar from "../components/Avatar"
@@ -27,6 +28,7 @@ const asHours = (value) => `${Number(value || 0).toFixed(2)}h`
 
 const statusTone = {
   PRESENT: "bg-black text-white border-neutral-900",
+  PUNCHED_IN: "bg-black text-white border-neutral-900",
   ABSENT: "bg-neutral-200 text-neutral-900 border-neutral-300",
   LATE: "bg-neutral-100 text-neutral-800 border-neutral-300",
   HALF_DAY: "bg-neutral-100 text-neutral-800 border-neutral-300",
@@ -111,19 +113,78 @@ const AdminAttendance = () => {
     }
   }
 
-  const triggerExport = async (format = "csv") => {
+  const triggerExport = async (format = "excel") => {
     try {
-      const response = await api.get("/attendance/admin/export", {
-        params: { ...params, format },
-        responseType: "blob"
+      const response = await api.get("/attendance/admin", {
+        params: { ...params, limit: 1000 }
       })
-      const url = window.URL.createObjectURL(new Blob([response.data]))
-      const link = document.createElement("a")
-      link.href = url
-      link.setAttribute("download", `attendance-${getLocalTodayIso()}.${format === "excel" ? "xls" : "csv"}`)
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
+      const payload = unwrap(response)
+      const items = payload.items || []
+
+      const exportRows = items.map((row) => {
+        const punchInTime = row.punchIn?.time ? formatDateTime(row.punchIn.time) : "-"
+        const punchOutTime = row.punchOut?.time ? formatDateTime(row.punchOut.time) : "-"
+
+        let lateBy = "-"
+        if (row.punchIn?.time) {
+          const pTime = new Date(row.punchIn.time)
+          const totalMins = pTime.getHours() * 60 + pTime.getMinutes()
+          const cutoffMins = 9 * 60 + 30
+          if (totalMins > cutoffMins) {
+            lateBy = `${totalMins - cutoffMins} min`
+          }
+        }
+
+        let displayStatus = row.status || "ABSENT"
+        if (displayStatus === "PUNCHED_IN") displayStatus = "PUNCHED_IN"
+        else if (displayStatus === "PRESENT") displayStatus = "PRESENT"
+        else if (displayStatus === "LATE") displayStatus = "LATE"
+        else if (displayStatus === "LEAVE") displayStatus = "LEAVE"
+
+        return {
+          "Date": formatDate(row.date),
+          "Employee Name": row.employee?.name || "-",
+          "Email": row.employee?.email || "-",
+          "Department": row.employee?.department || "-",
+          "Punch In": punchInTime,
+          "Punch Out": punchOutTime,
+          "Working Hours": row.workingHoursText || (row.workingHours ? `${row.workingHours}h` : "—"),
+          "Status": displayStatus,
+          "Late By": lateBy
+        }
+      })
+
+      const dateStr = filters.date || getLocalTodayIso()
+
+      if (format === "csv") {
+        const headers = ["Date", "Employee Name", "Email", "Department", "Punch In", "Punch Out", "Working Hours", "Status", "Late By"]
+        const escapeCsv = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`
+        const csvContent = [headers.join(','), ...exportRows.map((r) => headers.map((h) => escapeCsv(r[h])).join(','))].join('\n')
+        
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement("a")
+        link.href = url
+        link.setAttribute("download", `KODEWAR-Attendance-${dateStr}.csv`)
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+      } else {
+        const worksheet = XLSX.utils.json_to_sheet(exportRows)
+        const workbook = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance")
+
+        const maxLenMap = {}
+        exportRows.forEach(row => {
+          Object.keys(row).forEach(key => {
+            const val = String(row[key] || '')
+            maxLenMap[key] = Math.max(maxLenMap[key] || key.length, val.length)
+          })
+        })
+        worksheet['!cols'] = Object.keys(maxLenMap).map(key => ({ wch: maxLenMap[key] + 4 }))
+
+        XLSX.writeFile(workbook, `KODEWAR-Attendance-${dateStr}.xlsx`)
+      }
     } catch (error) {
       toastError(error)
     }
@@ -148,7 +209,7 @@ const AdminAttendance = () => {
           </button>
           <button
             onClick={() => triggerExport("excel")}
-            className="flex items-center gap-1.5 btn-primary text-xs py-2 px-3 font-bold"
+            className="flex items-center gap-1.5 btn-primary text-xs py-2 px-3 font-bold cursor-pointer"
           >
             <FileSpreadsheet className="w-4 h-4 text-white" />
             Excel
@@ -243,14 +304,13 @@ const AdminAttendance = () => {
                   <th className="py-3 px-4">Punch Out</th>
                   <th className="py-3 px-4">Working Hours</th>
                   <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">GPS Verification</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-12 text-neutral-400">
+                    <td colSpan={7} className="text-center py-12 text-neutral-400">
                       No attendance records found matching filters
                     </td>
                   </tr>
@@ -273,11 +333,6 @@ const AdminAttendance = () => {
                       <td className="py-3 px-4">
                         <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${statusTone[row.status] || "bg-neutral-100 text-neutral-700 border-neutral-200"}`}>
                           {row.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-flex items-center gap-1 text-[11px] font-bold ${row.gpsVerification === 'Verified' ? 'text-black' : 'text-neutral-500'}`}>
-                          {row.gpsVerification}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right">
@@ -353,13 +408,6 @@ const AdminAttendance = () => {
                   <div className="flex justify-between"><span className="text-neutral-500 font-semibold">Punch Out:</span><span className="font-mono font-bold text-black">{formatDateTime(selected.punchOut?.time)}</span></div>
                   <div className="flex justify-between"><span className="text-neutral-500 font-semibold">Working Hours:</span><span className="font-bold text-black">{selected.workingHoursText || asHours(selected.workingHours)}</span></div>
                   <div className="flex justify-between"><span className="text-neutral-500 font-semibold">Status:</span><span className="font-bold text-black">{selected.status}</span></div>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-500 font-semibold">GPS Status:</span>
-                    <span className="font-bold text-black">
-                      {selected.gpsVerification}
-                      {selected.latitude && selected.longitude ? ` (${selected.latitude.toFixed(4)}, ${selected.longitude.toFixed(4)})` : ''}
-                    </span>
-                  </div>
                 </div>
 
                 {selected.adminNotes && (
@@ -378,3 +426,4 @@ const AdminAttendance = () => {
 }
 
 export default AdminAttendance
+

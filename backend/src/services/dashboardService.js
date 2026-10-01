@@ -3,9 +3,14 @@ import { todayStatus } from './attendanceService.js';
 import { getHolidays } from './holidayService.js';
 import { list as listAnnouncements } from './announcementService.js';
 import { mapEmployeeFromDb } from '../utils/supabaseHelpers.js';
+import { getZonedParts } from '../utils/date.js';
+import { env } from '../config/env.js';
 import logger from '../utils/logger.js';
 
-const getTodayDateString = () => new Date().toISOString().slice(0, 10);
+const getTodayDateString = (dateObj = new Date()) => {
+  const parts = getZonedParts(dateObj, env.organizationTimezone || 'Asia/Kolkata');
+  return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
+};
 
 export const adminDashboard = async () => {
   const todayStr = getTodayDateString();
@@ -35,9 +40,26 @@ export const adminDashboard = async () => {
     const todayAttendance = (activeEmployees || []).map((emp) => {
       const record = attendanceMap.get(String(emp.id));
       let status = 'ABSENT';
-      if (record) {
-        if (record.punch_out) status = 'PUNCHED_OUT';
-        else if (record.punch_in) status = 'PUNCHED_IN';
+      let workingHoursText = '—';
+      let workingHoursNum = 0;
+
+      if (record?.punch_in) {
+        const start = new Date(record.punch_in);
+        const end = record.punch_out ? new Date(record.punch_out) : new Date();
+        const diffMs = Math.max(0, end.getTime() - start.getTime());
+        const totalMinutes = Math.floor(diffMs / 60000);
+        const hours = Math.floor(totalMinutes / 60);
+        const mins = totalMinutes % 60;
+        workingHoursNum = Number((diffMs / 3600000).toFixed(2));
+
+        if (!record.punch_out) {
+          status = 'PUNCHED_IN';
+          workingHoursText = `${hours}h ${mins}m · In progress`;
+        } else {
+          const rawStatus = (record.status || '').toLowerCase();
+          status = rawStatus === 'late' ? 'LATE' : 'PRESENT';
+          workingHoursText = `${hours}h ${mins}m`;
+        }
       }
 
       return {
@@ -49,9 +71,8 @@ export const adminDashboard = async () => {
         },
         punchIn: record?.punch_in || null,
         punchOut: record?.punch_out || null,
-        workingHours: (record?.punch_in && record?.punch_out)
-          ? Number(((new Date(record.punch_out) - new Date(record.punch_in)) / 3600000).toFixed(2))
-          : 0,
+        workingHours: workingHoursNum,
+        workingHoursText,
         status
       };
     });

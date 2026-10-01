@@ -397,7 +397,9 @@ export const adminAttendanceCenter = async (query = {}) => {
       status = 'LEAVE';
     } else if (att?.punch_in) {
       const rawStatus = (att.status || '').toLowerCase();
-      if (rawStatus === 'late') {
+      if (!att.punch_out) {
+        status = rawStatus === 'late' ? 'LATE' : 'PUNCHED_IN';
+      } else if (rawStatus === 'late') {
         status = 'LATE';
       } else if (rawStatus === 'half_day') {
         status = 'HALF_DAY';
@@ -445,7 +447,7 @@ export const adminAttendanceCenter = async (query = {}) => {
   if (query.status) {
     const targetStatus = String(query.status).toUpperCase();
     if (targetStatus === 'PRESENT') {
-      rows = rows.filter((r) => r.status === 'PRESENT' || r.status === 'LATE' || r.status === 'HALF_DAY' || Boolean(r.punchIn?.time));
+      rows = rows.filter((r) => r.status === 'PRESENT' || r.status === 'PUNCHED_IN' || r.status === 'LATE' || r.status === 'HALF_DAY' || Boolean(r.punchIn?.time));
     } else {
       rows = rows.filter((r) => r.status.toUpperCase() === targetStatus);
     }
