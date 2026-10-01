@@ -32,6 +32,26 @@ export const toastError = (error) => {
 
 export const employeeName = (employee) => employee?.name || "Unknown employee";
 
-export const formatDate = (value) => value ? new Date(value).toLocaleDateString() : "-";
+export const formatDate = (value) => {
+    if (!value) return "-";
+    if (typeof value === "string") {
+        const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+        if (match) {
+            return `${match[3]}/${match[2]}/${match[1]}`;
+        }
+    }
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return "-";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+};
 
-export const formatDateTime = (value) => value ? new Date(value).toLocaleString() : "-";
+export const formatDateTime = (value) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return "-";
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
+

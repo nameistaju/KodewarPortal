@@ -11,15 +11,18 @@ import {
   X
 } from "lucide-react"
 import api from "../api/axios"
-import { toastError, unwrap } from "../api/helpers"
 import { useAuth } from "../context/AuthContext"
 import Avatar from "../components/Avatar"
+import { formatDate, formatDateTime, toastError, unwrap } from "../api/helpers"
 
 const departments = ["ADMIN", "HR", "IT", "SALES", "MARKETING", "FINANCE", "OPERATIONS"]
 const statuses = ["PRESENT", "ABSENT", "LATE", "HALF_DAY", "LEAVE"]
 
-const formatDate = (value) => (value ? new Date(value).toLocaleDateString() : "-")
-const formatTime = (value) => (value ? new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-")
+const getLocalTodayIso = () => {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
+
 const asHours = (value) => `${Number(value || 0).toFixed(2)}h`
 
 const statusTone = {
@@ -43,7 +46,7 @@ const AdminAttendance = () => {
     search: "",
     employeeName: "",
     department: "",
-    date: new Date().toISOString().slice(0, 10),
+    date: getLocalTodayIso(),
     from: "",
     to: "",
     status: "",
@@ -86,7 +89,7 @@ const AdminAttendance = () => {
       search: "",
       employeeName: "",
       department: "",
-      date: new Date().toISOString().slice(0, 10),
+      date: getLocalTodayIso(),
       from: "",
       to: "",
       status: "",
@@ -117,7 +120,7 @@ const AdminAttendance = () => {
       const url = window.URL.createObjectURL(new Blob([response.data]))
       const link = document.createElement("a")
       link.href = url
-      link.setAttribute("download", `attendance-${new Date().toISOString().slice(0, 10)}.${format === "excel" ? "xls" : "csv"}`)
+      link.setAttribute("download", `attendance-${getLocalTodayIso()}.${format === "excel" ? "xls" : "csv"}`)
       document.body.appendChild(link)
       link.click()
       link.remove()
@@ -264,9 +267,9 @@ const AdminAttendance = () => {
                         </div>
                       </td>
                       <td className="py-3 px-4 font-bold text-neutral-800">{formatDate(row.date)}</td>
-                      <td className="py-3 px-4 font-mono text-neutral-700">{formatTime(row.punchIn?.time)}</td>
-                      <td className="py-3 px-4 font-mono text-neutral-700">{formatTime(row.punchOut?.time)}</td>
-                      <td className="py-3 px-4 font-bold text-neutral-900">{asHours(row.workingHours)}</td>
+                      <td className="py-3 px-4 font-mono text-neutral-700">{formatDateTime(row.punchIn?.time)}</td>
+                      <td className="py-3 px-4 font-mono text-neutral-700">{formatDateTime(row.punchOut?.time)}</td>
+                      <td className="py-3 px-4 font-bold text-neutral-900">{row.workingHoursText || asHours(row.workingHours)}</td>
                       <td className="py-3 px-4">
                         <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${statusTone[row.status] || "bg-neutral-100 text-neutral-700 border-neutral-200"}`}>
                           {row.status}
@@ -346,11 +349,17 @@ const AdminAttendance = () => {
 
                 <div className="space-y-2 border-b border-neutral-200 pb-4">
                   <div className="flex justify-between"><span className="text-neutral-500 font-semibold">Date:</span><span className="font-bold text-black">{formatDate(selected.date)}</span></div>
-                  <div className="flex justify-between"><span className="text-neutral-500 font-semibold">Punch In:</span><span className="font-mono font-bold text-black">{formatTime(selected.punchIn?.time)}</span></div>
-                  <div className="flex justify-between"><span className="text-neutral-500 font-semibold">Punch Out:</span><span className="font-mono font-bold text-black">{formatTime(selected.punchOut?.time)}</span></div>
-                  <div className="flex justify-between"><span className="text-neutral-500 font-semibold">Working Hours:</span><span className="font-bold text-black">{asHours(selected.workingHours)}</span></div>
+                  <div className="flex justify-between"><span className="text-neutral-500 font-semibold">Punch In:</span><span className="font-mono font-bold text-black">{formatDateTime(selected.punchIn?.time)}</span></div>
+                  <div className="flex justify-between"><span className="text-neutral-500 font-semibold">Punch Out:</span><span className="font-mono font-bold text-black">{formatDateTime(selected.punchOut?.time)}</span></div>
+                  <div className="flex justify-between"><span className="text-neutral-500 font-semibold">Working Hours:</span><span className="font-bold text-black">{selected.workingHoursText || asHours(selected.workingHours)}</span></div>
                   <div className="flex justify-between"><span className="text-neutral-500 font-semibold">Status:</span><span className="font-bold text-black">{selected.status}</span></div>
-                  <div className="flex justify-between"><span className="text-neutral-500 font-semibold">GPS Status:</span><span className="font-bold text-black">{selected.gpsVerification}</span></div>
+                  <div className="flex justify-between">
+                    <span className="text-neutral-500 font-semibold">GPS Status:</span>
+                    <span className="font-bold text-black">
+                      {selected.gpsVerification}
+                      {selected.latitude && selected.longitude ? ` (${selected.latitude.toFixed(4)}, ${selected.longitude.toFixed(4)})` : ''}
+                    </span>
+                  </div>
                 </div>
 
                 {selected.adminNotes && (

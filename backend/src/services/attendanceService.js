@@ -1,7 +1,7 @@
 import { supabase } from '../config/supabase.js';
 import AppError from '../utils/AppError.js';
 import { env } from '../config/env.js';
-import { isLaterThanLocalTime } from '../utils/date.js';
+import { isLaterThanLocalTime, getZonedParts } from '../utils/date.js';
 import { isInsideRadius } from '../utils/location.js';
 import { latitude, longitude, radius } from '../config/officeLocation.js';
 
@@ -33,7 +33,34 @@ export const configureOffice = async (payload) => {
 };
 
 const getTodayDateString = (dateObj = new Date()) => {
-  return dateObj.toISOString().slice(0, 10);
+  const parts = getZonedParts(dateObj, env.organizationTimezone || 'Asia/Kolkata');
+  return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
+};
+
+const getWorkingHoursData = (punchInTime, punchOutTime) => {
+  if (!punchInTime) return { hoursNum: 0, text: '—', inProgress: false };
+
+  const start = new Date(punchInTime);
+  const end = punchOutTime ? new Date(punchOutTime) : new Date();
+  const diffMs = Math.max(0, end.getTime() - start.getTime());
+  const totalMinutes = Math.floor(diffMs / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  const hoursNum = Number((diffMs / 3600000).toFixed(2));
+
+  if (!punchOutTime) {
+    return {
+      hoursNum,
+      text: `${hours}h ${mins}m · In progress`,
+      inProgress: true
+    };
+  }
+
+  return {
+    hoursNum,
+    text: `${hours}h ${mins}m`,
+    inProgress: false
+  };
 };
 
 const validateLocation = async (payload, requireRadius = true) => {
@@ -70,10 +97,7 @@ const formatAttendanceRecord = (row, employeeData = null) => {
 
   const punchInTime = row.punch_in ? new Date(row.punch_in) : null;
   const punchOutTime = row.punch_out ? new Date(row.punch_out) : null;
-  let workingHours = 0;
-  if (punchInTime && punchOutTime) {
-    workingHours = Number(((punchOutTime - punchInTime) / 3600000).toFixed(2));
-  }
+  const workingData = getWorkingHoursData(punchInTime, punchOutTime);
 
   const rawStatus = (row.status || '').toLowerCase();
   let statusVal = 'ABSENT';
@@ -109,9 +133,14 @@ const formatAttendanceRecord = (row, employeeData = null) => {
         accuracy: 0
       }
     } : null,
-    workingHours,
+    workingHours: workingData.hoursNum,
+    workingHoursText: workingData.text,
+    inProgress: workingData.inProgress,
     attendanceStatus: statusVal,
     status: statusVal,
+    gpsVerification: row.latitude ? 'Verified' : 'Not Available',
+    latitude: row.latitude ? Number(row.latitude) : null,
+    longitude: row.longitude ? Number(row.longitude) : null,
     created_at: row.created_at,
     updated_at: row.updated_at
   };
@@ -193,7 +222,6 @@ export const punchIn = async (employeeId, payload) => {
 
 export const punchOut = async (employeeId, payload) => {
   const location = await validateLocation(payload, false);
-  const todayStr = getTodayDateString();
 
   const { data: openRecord } = await supabase
     .from('attendance')
@@ -318,8 +346,9 @@ export const monthlySummary = async (requestUser, query = {}) => {
   const completeDays = (rows || []).filter((r) => r.punch_in && r.punch_out).length;
   let totalWorkingHours = 0;
   (rows || []).forEach((r) => {
-    if (r.punch_in && r.punch_out) {
-      totalWorkingHours += (new Date(r.punch_out) - new Date(r.punch_in)) / 3600000;
+    if (r.punch_in) {
+      const end = r.punch_out ? new Date(r.punch_out) : new Date();
+      totalWorkingHours += (end - new Date(r.punch_in)) / 3600000;
     }
   });
 
@@ -367,9 +396,20 @@ export const adminAttendanceCenter = async (query = {}) => {
     if (lev) {
       status = 'LEAVE';
     } else if (att?.punch_in) {
-      const punchInDate = new Date(att.punch_in);
-      status = isLaterThanLocalTime(punchInDate, 9, 30) ? 'LATE' : 'PRESENT';
+      const rawStatus = (att.status || '').toLowerCase();
+      if (rawStatus === 'late') {
+        status = 'LATE';
+      } else if (rawStatus === 'half_day') {
+        status = 'HALF_DAY';
+      } else {
+        const punchInDate = new Date(att.punch_in);
+        status = isLaterThanLocalTime(punchInDate, 9, 30) ? 'LATE' : 'PRESENT';
+      }
     }
+
+    const workingData = att?.punch_in
+      ? getWorkingHoursData(att.punch_in, att.punch_out)
+      : { hoursNum: 0, text: '—', inProgress: false };
 
     return {
       _id: att ? String(att.id) : `${emp.id}-${todayStr}`,
@@ -380,20 +420,37 @@ export const adminAttendanceCenter = async (query = {}) => {
         department: emp.department
       },
       date: todayStr,
-      punchIn: att?.punch_in ? { time: att.punch_in } : null,
-      punchOut: att?.punch_out ? { time: att.punch_out } : null,
-      workingHours: (att?.punch_in && att?.punch_out) ? Number(((new Date(att.punch_out) - new Date(att.punch_in)) / 3600000).toFixed(2)) : 0,
+      punchIn: att?.punch_in ? {
+        time: att.punch_in,
+        location: { latitude: Number(att.latitude || 0), longitude: Number(att.longitude || 0) }
+      } : null,
+      punchOut: att?.punch_out ? {
+        time: att.punch_out,
+        location: { latitude: Number(att.latitude || 0), longitude: Number(att.longitude || 0) }
+      } : null,
+      workingHours: workingData.hoursNum,
+      workingHoursText: workingData.text,
+      inProgress: workingData.inProgress,
       status,
-      gpsVerification: att?.latitude ? 'Verified' : 'Not Available'
+      gpsVerification: att?.latitude ? 'Verified' : 'Not Available',
+      latitude: att?.latitude ? Number(att.latitude) : null,
+      longitude: att?.longitude ? Number(att.longitude) : null
     };
   });
 
   if (query.department) {
     rows = rows.filter((r) => r.employee.department === query.department);
   }
+
   if (query.status) {
-    rows = rows.filter((r) => r.status === query.status);
+    const targetStatus = String(query.status).toUpperCase();
+    if (targetStatus === 'PRESENT') {
+      rows = rows.filter((r) => r.status === 'PRESENT' || r.status === 'LATE' || r.status === 'HALF_DAY' || Boolean(r.punchIn?.time));
+    } else {
+      rows = rows.filter((r) => r.status.toUpperCase() === targetStatus);
+    }
   }
+
   if (query.search) {
     const term = query.search.toLowerCase();
     rows = rows.filter((r) => r.employee.name.toLowerCase().includes(term) || r.employee.email.toLowerCase().includes(term));
