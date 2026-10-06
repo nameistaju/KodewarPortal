@@ -37,3 +37,17 @@ export const sendMediaMessageSchema = z.object({
     z.number().min(0).max(120, 'Voice note duration cannot exceed 2 minutes (120 seconds)').optional()
   )
 });
+
+export const createChannelSchema = z.object({
+  name: z.string().trim().min(2, 'Channel/Group name must be at least 2 characters').max(50),
+  description: z.string().trim().max(250).optional(),
+  type: z.enum(['CHANNEL', 'GROUP']).optional().default('CHANNEL'),
+  isPrivate: z.boolean().optional().default(false),
+  participantIds: z.array(objectId).optional().default([])
+});
+
+export const addChannelMemberSchema = z.object({
+  employeeId: objectId,
+  role: z.enum(['OWNER', 'ADMIN', 'MEMBER']).optional().default('MEMBER')
+});
+

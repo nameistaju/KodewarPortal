@@ -9,7 +9,9 @@ import {
   createConversationSchema,
   getMessagesQuerySchema,
   sendMediaMessageSchema,
-  sendTextMessageSchema
+  sendTextMessageSchema,
+  createChannelSchema,
+  addChannelMemberSchema
 } from '../validators/chatValidator.js';
 
 const router = Router();
@@ -20,6 +22,26 @@ router
   .route('/conversations')
   .get(chatController.getConversations)
   .post(writeLimiter, validate({ body: createConversationSchema }), chatController.createConversation);
+
+router.post(
+  '/channels',
+  writeLimiter,
+  validate({ body: createChannelSchema }),
+  chatController.createChannel
+);
+
+router.post(
+  '/channels/:id/members',
+  writeLimiter,
+  validate({ body: addChannelMemberSchema }),
+  chatController.addChannelMember
+);
+
+router.delete(
+  '/channels/:id/members/:employeeId',
+  writeLimiter,
+  chatController.removeChannelMember
+);
 
 router
   .route('/conversations/:conversationId/messages')

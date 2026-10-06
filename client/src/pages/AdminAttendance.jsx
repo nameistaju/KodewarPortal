@@ -17,7 +17,7 @@ import Avatar from "../components/Avatar"
 import { formatDate, formatDateTime, toastError, unwrap } from "../api/helpers"
 
 const departments = ["ADMIN", "HR", "IT", "SALES", "MARKETING", "FINANCE", "OPERATIONS"]
-const statuses = ["PRESENT", "ABSENT", "LATE", "HALF_DAY", "LEAVE"]
+const statuses = ["PRESENT", "ABSENT", "LATE", "HALF_DAY", "LEAVE", "AUTO_PUNCHED_OUT"]
 
 const getLocalTodayIso = () => {
   const now = new Date()
@@ -32,7 +32,8 @@ const statusTone = {
   ABSENT: "bg-neutral-200 text-neutral-900 border-neutral-300",
   LATE: "bg-neutral-100 text-neutral-800 border-neutral-300",
   HALF_DAY: "bg-neutral-100 text-neutral-800 border-neutral-300",
-  LEAVE: "bg-neutral-900 text-white border-neutral-800"
+  LEAVE: "bg-neutral-900 text-white border-neutral-800",
+  AUTO_PUNCHED_OUT: "bg-neutral-900 text-amber-300 border-neutral-800"
 }
 
 const AdminAttendance = () => {
@@ -113,11 +114,16 @@ const AdminAttendance = () => {
     }
   }
 
+  const [isExporting, setIsExporting] = useState(false)
+
   const triggerExport = async (format = "excel") => {
+    if (isExporting) return
+    setIsExporting(true)
+
     try {
-      const response = await api.get("/attendance/admin", {
-        params: { ...params, limit: 1000 }
-      })
+      // Omit page pagination so all matching records are fetched for export
+      const exportParams = { ...params, page: 1, limit: 100000 }
+      const response = await api.get("/attendance/admin", { params: exportParams })
       const payload = unwrap(response)
       const items = payload.items || []
 
@@ -125,21 +131,26 @@ const AdminAttendance = () => {
         const punchInTime = row.punchIn?.time ? formatDateTime(row.punchIn.time) : "-"
         const punchOutTime = row.punchOut?.time ? formatDateTime(row.punchOut.time) : "-"
 
-        let lateBy = "-"
+        let attendanceType = "MANUAL"
+        if (row.status === "LEAVE") attendanceType = "LEAVE"
+        else if (row.status === "ABSENT") attendanceType = "ABSENT"
+        else if (row.status === "AUTO_PUNCHED_OUT") attendanceType = "AUTO"
+
+        let lateBy = "0m"
         if (row.punchIn?.time) {
           const pTime = new Date(row.punchIn.time)
           const totalMins = pTime.getHours() * 60 + pTime.getMinutes()
           const cutoffMins = 9 * 60 + 30
           if (totalMins > cutoffMins) {
-            lateBy = `${totalMins - cutoffMins} min`
+            const diff = totalMins - cutoffMins
+            const h = Math.floor(diff / 60)
+            const m = diff % 60
+            lateBy = h > 0 ? `${h}h ${m}m` : `${m}m`
           }
         }
 
         let displayStatus = row.status || "ABSENT"
-        if (displayStatus === "PUNCHED_IN") displayStatus = "PUNCHED_IN"
-        else if (displayStatus === "PRESENT") displayStatus = "PRESENT"
-        else if (displayStatus === "LATE") displayStatus = "LATE"
-        else if (displayStatus === "LEAVE") displayStatus = "LEAVE"
+        if (displayStatus === "AUTO_PUNCHED_OUT") displayStatus = "AUTO PUNCHED OUT"
 
         return {
           "Date": formatDate(row.date),
@@ -151,14 +162,15 @@ const AdminAttendance = () => {
           "Punch Out": punchOutTime,
           "Working Hours": row.workingHoursText || (row.workingHours ? `${row.workingHours}h` : "—"),
           "Status": displayStatus,
+          "Attendance Type": attendanceType,
           "Late By": lateBy
         }
       })
 
       const dateStr = filters.date || getLocalTodayIso()
+      const headers = ["Date", "Employee ID", "Employee Name", "Email", "Department", "Punch In", "Punch Out", "Working Hours", "Status", "Attendance Type", "Late By"]
 
       if (format === "csv") {
-        const headers = ["Date", "Employee ID", "Employee Name", "Email", "Department", "Punch In", "Punch Out", "Working Hours", "Status", "Late By"]
         const escapeCsv = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`
         const csvContent = [headers.join(','), ...exportRows.map((r) => headers.map((h) => escapeCsv(r[h])).join(','))].join('\n')
         
@@ -166,7 +178,7 @@ const AdminAttendance = () => {
         const url = URL.createObjectURL(blob)
         const link = document.createElement("a")
         link.href = url
-        link.setAttribute("download", `KODEWAR-Attendance-${dateStr}.csv`)
+        link.setAttribute("download", `KODEWAR_Attendance_${dateStr}.csv`)
         document.body.appendChild(link)
         link.click()
         link.remove()
@@ -184,10 +196,14 @@ const AdminAttendance = () => {
         })
         worksheet['!cols'] = Object.keys(maxLenMap).map(key => ({ wch: maxLenMap[key] + 4 }))
 
-        XLSX.writeFile(workbook, `KODEWAR-Attendance-${dateStr}.xlsx`)
+        XLSX.writeFile(workbook, `KODEWAR_Attendance_${dateStr}.xlsx`)
       }
-    } catch (error) {
-      toastError(error)
+
+      toast.success("Attendance report downloaded successfully.")
+    } catch {
+      toast.error("Unable to export attendance. Please try again.")
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -202,18 +218,20 @@ const AdminAttendance = () => {
 
         <div className="flex items-center gap-2">
           <button
+            disabled={isExporting}
             onClick={() => triggerExport("csv")}
-            className="flex items-center gap-1.5 btn-secondary text-xs py-2 px-3 font-bold"
+            className="flex items-center gap-1.5 btn-secondary text-xs py-2 px-3 font-bold disabled:opacity-50 cursor-pointer"
           >
-            <Download className="w-4 h-4 text-black" />
-            CSV
+            {isExporting ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : <Download className="w-4 h-4 text-black" />}
+            {isExporting ? "Exporting..." : "CSV"}
           </button>
           <button
+            disabled={isExporting}
             onClick={() => triggerExport("excel")}
-            className="flex items-center gap-1.5 btn-primary text-xs py-2 px-3 font-bold cursor-pointer"
+            className="flex items-center gap-1.5 btn-primary text-xs py-2 px-3 font-bold disabled:opacity-50 cursor-pointer"
           >
-            <FileSpreadsheet className="w-4 h-4 text-white" />
-            Excel
+            {isExporting ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <FileSpreadsheet className="w-4 h-4 text-white" />}
+            {isExporting ? "Exporting..." : "Excel"}
           </button>
         </div>
       </div>
@@ -333,7 +351,7 @@ const AdminAttendance = () => {
                       <td className="py-3 px-4 font-bold text-neutral-900">{row.workingHoursText || asHours(row.workingHours)}</td>
                       <td className="py-3 px-4">
                         <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${statusTone[row.status] || "bg-neutral-100 text-neutral-700 border-neutral-200"}`}>
-                          {row.status}
+                          {row.status === "AUTO_PUNCHED_OUT" ? "AUTO PUNCHED OUT" : row.status}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right">
@@ -408,8 +426,17 @@ const AdminAttendance = () => {
                   <div className="flex justify-between"><span className="text-neutral-500 font-semibold">Punch In:</span><span className="font-mono font-bold text-black">{formatDateTime(selected.punchIn?.time)}</span></div>
                   <div className="flex justify-between"><span className="text-neutral-500 font-semibold">Punch Out:</span><span className="font-mono font-bold text-black">{formatDateTime(selected.punchOut?.time)}</span></div>
                   <div className="flex justify-between"><span className="text-neutral-500 font-semibold">Working Hours:</span><span className="font-bold text-black">{selected.workingHoursText || asHours(selected.workingHours)}</span></div>
-                  <div className="flex justify-between"><span className="text-neutral-500 font-semibold">Status:</span><span className="font-bold text-black">{selected.status}</span></div>
+                  <div className="flex justify-between"><span className="text-neutral-500 font-semibold">Status:</span><span className="font-bold text-black">{selected.status === "AUTO_PUNCHED_OUT" ? "AUTO PUNCHED OUT" : selected.status}</span></div>
                 </div>
+
+                {selected.status === "AUTO_PUNCHED_OUT" && (
+                  <div className="p-3.5 bg-neutral-900 text-amber-300 border border-neutral-800 rounded-xl space-y-1">
+                    <span className="font-extrabold text-xs uppercase tracking-wider block">AUTO PUNCHED OUT</span>
+                    <p className="text-xs text-neutral-300 font-medium leading-relaxed">
+                      The system automatically closed this attendance record at workday cutoff (18:30) because no manual punch-out was recorded.
+                    </p>
+                  </div>
+                )}
 
                 {selected.adminNotes && (
                   <div>

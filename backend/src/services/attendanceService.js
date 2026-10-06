@@ -4,6 +4,7 @@ import { env } from '../config/env.js';
 import { isLaterThanLocalTime, getZonedParts } from '../utils/date.js';
 import { isInsideRadius } from '../utils/location.js';
 import { latitude, longitude, radius } from '../config/officeLocation.js';
+import { processAutoPunchOuts } from './attendanceAutoCloseService.js';
 
 const OFFICE_LOCATION = {
   latitude,
@@ -15,7 +16,7 @@ let inMemoryOfficeConfig = {
   officeLatitude: OFFICE_LOCATION.latitude,
   officeLongitude: OFFICE_LOCATION.longitude,
   allowedRadiusMeters: OFFICE_LOCATION.radiusMeters,
-  autoCloseTime: '20:30'
+  autoCloseTime: '18:30'
 };
 
 export const getOfficeSetting = async () => {
@@ -27,7 +28,7 @@ export const configureOffice = async (payload) => {
     officeLatitude: Number(payload.officeLatitude),
     officeLongitude: Number(payload.officeLongitude),
     allowedRadiusMeters: Number(payload.allowedRadiusMeters),
-    autoCloseTime: payload.autoCloseTime || '20:30'
+    autoCloseTime: payload.autoCloseTime || '18:30'
   };
   return inMemoryOfficeConfig;
 };
@@ -101,7 +102,9 @@ const formatAttendanceRecord = (row, employeeData = null) => {
 
   const rawStatus = (row.status || '').toLowerCase();
   let statusVal = 'ABSENT';
-  if (rawStatus === 'present' || rawStatus === 'punched_in' || rawStatus === 'punched_out') {
+  if (rawStatus === 'auto_punched_out' || row.status === 'AUTO_PUNCHED_OUT') {
+    statusVal = 'AUTO_PUNCHED_OUT';
+  } else if (rawStatus === 'present' || rawStatus === 'punched_in' || rawStatus === 'punched_out') {
     statusVal = 'PRESENT';
   } else if (rawStatus === 'late') {
     statusVal = 'LATE';
@@ -147,6 +150,7 @@ const formatAttendanceRecord = (row, employeeData = null) => {
 };
 
 export const punchIn = async (employeeId, payload) => {
+  await processAutoPunchOuts();
   const location = await validateLocation(payload, true);
   const todayStr = getTodayDateString();
 
@@ -221,6 +225,7 @@ export const punchIn = async (employeeId, payload) => {
 };
 
 export const punchOut = async (employeeId, payload) => {
+  await processAutoPunchOuts();
   const location = await validateLocation(payload, false);
 
   const { data: openRecord } = await supabase
@@ -261,6 +266,7 @@ export const punchOut = async (employeeId, payload) => {
 };
 
 export const todayStatus = async (employeeId) => {
+  await processAutoPunchOuts();
   const todayStr = getTodayDateString();
 
   const { data: attendanceRow } = await supabase
@@ -285,6 +291,7 @@ export const todayStatus = async (employeeId) => {
 };
 
 export const history = async (requestUser, query = {}) => {
+  await processAutoPunchOuts();
   let builder = supabase
     .from('attendance')
     .select('*, employees!employee_id(id, name, email, department)', { count: 'exact' });
@@ -326,6 +333,7 @@ export const history = async (requestUser, query = {}) => {
 };
 
 export const monthlySummary = async (requestUser, query = {}) => {
+  await processAutoPunchOuts();
   const employeeId = (requestUser.role === 'ADMIN' && query.employeeId)
     ? query.employeeId
     : (requestUser.id || requestUser._id);
@@ -364,6 +372,7 @@ export const monthlySummary = async (requestUser, query = {}) => {
 };
 
 export const adminAttendanceCenter = async (query = {}) => {
+  await processAutoPunchOuts();
   const todayStr = query.date ? String(query.date).slice(0, 10) : getTodayDateString();
 
   const { data: activeEmployees, error: empError } = await supabase
@@ -397,7 +406,9 @@ export const adminAttendanceCenter = async (query = {}) => {
       status = 'LEAVE';
     } else if (att?.punch_in) {
       const rawStatus = (att.status || '').toLowerCase();
-      if (!att.punch_out) {
+      if (rawStatus === 'auto_punched_out' || att.status === 'AUTO_PUNCHED_OUT') {
+        status = 'AUTO_PUNCHED_OUT';
+      } else if (!att.punch_out) {
         status = rawStatus === 'late' ? 'LATE' : 'PUNCHED_IN';
       } else if (rawStatus === 'late') {
         status = 'LATE';
@@ -447,7 +458,9 @@ export const adminAttendanceCenter = async (query = {}) => {
   if (query.status) {
     const targetStatus = String(query.status).toUpperCase();
     if (targetStatus === 'PRESENT') {
-      rows = rows.filter((r) => r.status === 'PRESENT' || r.status === 'PUNCHED_IN' || r.status === 'LATE' || r.status === 'HALF_DAY' || Boolean(r.punchIn?.time));
+      rows = rows.filter((r) => r.status === 'PRESENT' || r.status === 'PUNCHED_IN' || r.status === 'LATE' || r.status === 'HALF_DAY' || r.status === 'AUTO_PUNCHED_OUT' || Boolean(r.punchIn?.time));
+    } else if (targetStatus === 'AUTO_PUNCHED_OUT' || targetStatus === 'AUTO_PUNCH_OUT') {
+      rows = rows.filter((r) => r.status === 'AUTO_PUNCHED_OUT');
     } else {
       rows = rows.filter((r) => r.status.toUpperCase() === targetStatus);
     }
@@ -481,6 +494,7 @@ export const adminAttendanceCenter = async (query = {}) => {
 };
 
 export const adminAttendanceDetail = async (attendanceId) => {
+  await processAutoPunchOuts();
   const { data: row, error } = await supabase
     .from('attendance')
     .select('*, employees!employee_id(id, name, email, department)')
@@ -493,20 +507,52 @@ export const adminAttendanceDetail = async (attendanceId) => {
 };
 
 export const adminAttendanceExport = async (query = {}) => {
+  await processAutoPunchOuts();
   const centerData = await adminAttendanceCenter(query);
-  const rows = centerData.items.map((row) => ({
-    Employee: row.employee?.name || '',
-    Email: row.employee?.email || '',
-    Department: row.employee?.department || '',
-    Date: row.date || '',
-    'Punch In': row.punchIn?.time ? new Date(row.punchIn.time).toLocaleString() : '',
-    'Punch Out': row.punchOut?.time ? new Date(row.punchOut.time).toLocaleString() : '',
-    Hours: row.workingHours || 0,
-    Status: row.status,
-    'GPS Verification': row.gpsVerification
-  }));
+  const rows = centerData.items.map((row) => {
+    let attendanceType = 'MANUAL';
+    if (row.status === 'LEAVE') {
+      attendanceType = 'LEAVE';
+    } else if (row.status === 'ABSENT') {
+      attendanceType = 'ABSENT';
+    } else if (row.status === 'AUTO_PUNCHED_OUT') {
+      attendanceType = 'AUTO';
+    } else {
+      attendanceType = 'MANUAL';
+    }
 
-  const headers = ['Employee', 'Email', 'Department', 'Date', 'Punch In', 'Punch Out', 'Hours', 'Status', 'GPS Verification'];
+    let lateByText = '0m';
+    if (row.punchIn?.time) {
+      const punchInDate = new Date(row.punchIn.time);
+      const parts = getZonedParts(punchInDate, env.organizationTimezone || 'Asia/Kolkata');
+      const totalMinutes = parts.hour * 60 + parts.minute;
+      const expectedMinutes = 9 * 60 + 30;
+      if (totalMinutes > expectedMinutes) {
+        const diff = totalMinutes - expectedMinutes;
+        const h = Math.floor(diff / 60);
+        const m = diff % 60;
+        lateByText = h > 0 ? `${h}h ${m}m` : `${m}m`;
+      }
+    }
+
+    const empCode = row.employee?.employeeCode || row.employee?._id || row.employee?.id || '-';
+
+    return {
+      'Date': row.date || '',
+      'Employee ID': empCode,
+      'Employee Name': row.employee?.name || '-',
+      'Email': row.employee?.email || '-',
+      'Department': row.employee?.department || '-',
+      'Punch In': row.punchIn?.time ? new Date(row.punchIn.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
+      'Punch Out': row.punchOut?.time ? new Date(row.punchOut.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
+      'Working Hours': row.workingHoursText || '—',
+      'Status': row.status === 'AUTO_PUNCHED_OUT' ? 'AUTO PUNCHED OUT' : row.status,
+      'Attendance Type': attendanceType,
+      'Late By': lateByText
+    };
+  });
+
+  const headers = ['Date', 'Employee ID', 'Employee Name', 'Email', 'Department', 'Punch In', 'Punch Out', 'Working Hours', 'Status', 'Attendance Type', 'Late By'];
   const escapeCsv = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
   const csv = [headers.join(','), ...rows.map((row) => headers.map((h) => escapeCsv(row[h])).join(','))].join('\n');
 

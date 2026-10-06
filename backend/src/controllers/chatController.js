@@ -15,6 +15,30 @@ export const createConversation = catchAsync(async (req, res) => {
   sendSuccess(res, 201, 'Conversation retrieved or created successfully', { conversation });
 });
 
+export const createChannel = catchAsync(async (req, res) => {
+  const conversation = await chatService.createChannel(req.user, req.body);
+  sendSuccess(res, 201, 'Channel or group created successfully', { conversation });
+});
+
+export const addChannelMember = catchAsync(async (req, res) => {
+  const conversation = await chatService.addChannelMember(
+    req.user,
+    req.params.id || req.params.conversationId,
+    req.body.employeeId,
+    req.body.role || 'MEMBER'
+  );
+  sendSuccess(res, 200, 'Member added successfully', { conversation });
+});
+
+export const removeChannelMember = catchAsync(async (req, res) => {
+  const result = await chatService.removeChannelMember(
+    req.user,
+    req.params.id || req.params.conversationId,
+    req.params.employeeId
+  );
+  sendSuccess(res, 200, 'Member removed successfully', result);
+});
+
 export const getMessages = catchAsync(async (req, res) => {
   const currentUserId = req.user._id || req.user.id;
   const result = await chatService.getConversationMessages(

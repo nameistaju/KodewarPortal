@@ -12,6 +12,7 @@ import { getErrorMessage } from '../api/helpers';
 import ConversationList from '../components/chat/ConversationList';
 import ChatWindow from '../components/chat/ChatWindow';
 import NewChatModal from '../components/chat/NewChatModal';
+import NewChannelModal from '../components/chat/NewChannelModal';
 import { isMessageExpired } from '../utils/chatTime';
 
 const Chat = () => {
@@ -29,6 +30,7 @@ const Chat = () => {
   const [totalPages, setTotalPages] = useState(1);
 
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
+  const [isNewChannelOpen, setIsNewChannelOpen] = useState(false);
   const pollIntervalRef = useRef(null);
 
   // 1. Fetch user conversations (Guarded by authenticated user ID)
@@ -174,6 +176,13 @@ const Chat = () => {
     }
   };
 
+  const handleChannelCreated = async (createdConv) => {
+    await fetchUserConversations(true);
+    if (createdConv) {
+      setSelectedConvId(createdConv._id || createdConv.id);
+    }
+  };
+
   // 6. Handle Send Text Message
   const handleSendText = async (content) => {
     if (!selectedConvId) return;
@@ -225,6 +234,7 @@ const Chat = () => {
           selectedConvId={selectedConvId}
           onSelectConversation={(id) => setSelectedConvId(id)}
           onOpenNewChat={() => setIsNewChatOpen(true)}
+          onOpenNewChannel={() => setIsNewChannelOpen(true)}
           loading={loadingConvs}
           currentUserId={currentUserId}
         />
@@ -255,6 +265,13 @@ const Chat = () => {
         isOpen={isNewChatOpen}
         onClose={() => setIsNewChatOpen(false)}
         onSelectRecipient={handleSelectRecipient}
+      />
+
+      {/* New Channel / Group Modal */}
+      <NewChannelModal
+        isOpen={isNewChannelOpen}
+        onClose={() => setIsNewChannelOpen(false)}
+        onCreated={handleChannelCreated}
       />
     </div>
   );

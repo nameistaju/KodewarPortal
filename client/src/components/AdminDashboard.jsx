@@ -168,12 +168,14 @@ const AdminDashboard = ({ data }) => {
                         className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                           item.status === 'PUNCHED_IN'
                             ? 'bg-black text-white border-neutral-900'
-                            : item.status === 'PUNCHED_OUT'
+                            : item.status === 'AUTO_PUNCHED_OUT'
+                            ? 'bg-neutral-900 text-amber-300 border-neutral-800'
+                            : item.status === 'PUNCHED_OUT' || item.status === 'PRESENT'
                             ? 'bg-neutral-200 text-neutral-900 border-neutral-300'
                             : 'bg-neutral-100 text-neutral-700 border-neutral-200'
                         }`}
                       >
-                        {item.status}
+                        {item.status === 'AUTO_PUNCHED_OUT' ? 'AUTO PUNCHED OUT' : item.status}
                       </span>
                     </td>
                   </tr>

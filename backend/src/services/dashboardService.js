@@ -5,6 +5,7 @@ import { list as listAnnouncements } from './announcementService.js';
 import { mapEmployeeFromDb } from '../utils/supabaseHelpers.js';
 import { getZonedParts } from '../utils/date.js';
 import { env } from '../config/env.js';
+import { processAutoPunchOuts } from './attendanceAutoCloseService.js';
 import logger from '../utils/logger.js';
 
 const getTodayDateString = (dateObj = new Date()) => {
@@ -13,6 +14,7 @@ const getTodayDateString = (dateObj = new Date()) => {
 };
 
 export const adminDashboard = async () => {
+  await processAutoPunchOuts();
   const todayStr = getTodayDateString();
 
   try {
@@ -52,11 +54,14 @@ export const adminDashboard = async () => {
         const mins = totalMinutes % 60;
         workingHoursNum = Number((diffMs / 3600000).toFixed(2));
 
-        if (!record.punch_out) {
+        const rawStatus = (record.status || '').toLowerCase();
+        if (rawStatus === 'auto_punched_out' || record.status === 'AUTO_PUNCHED_OUT') {
+          status = 'AUTO_PUNCHED_OUT';
+          workingHoursText = `${hours}h ${mins}m`;
+        } else if (!record.punch_out) {
           status = 'PUNCHED_IN';
           workingHoursText = `${hours}h ${mins}m · In progress`;
         } else {
-          const rawStatus = (record.status || '').toLowerCase();
           status = rawStatus === 'late' ? 'LATE' : 'PRESENT';
           workingHoursText = `${hours}h ${mins}m`;
         }

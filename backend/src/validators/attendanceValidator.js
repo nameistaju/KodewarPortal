@@ -28,7 +28,10 @@ export const monthlySummaryQuerySchema = z.object({
   employeeId: objectId.optional()
 });
 
-export const adminAttendanceQuerySchema = paginationQuerySchema.extend({
+export const adminAttendanceQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100000).optional(),
+  sort: z.string().optional(),
   employeeId: objectId.optional(),
   search: z.string().trim().optional(),
   employeeName: z.string().trim().optional(),
@@ -36,6 +39,8 @@ export const adminAttendanceQuerySchema = paginationQuerySchema.extend({
   date: z.coerce.date().optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
-  status: z.enum(['PRESENT', 'ABSENT', 'LATE', 'HALF_DAY', 'LEAVE']).optional(),
-  format: z.enum(['csv', 'excel']).optional()
+  status: z.enum(['PRESENT', 'ABSENT', 'LATE', 'HALF_DAY', 'LEAVE', 'AUTO_PUNCHED_OUT', 'PUNCHED_IN']).optional(),
+  format: z.enum(['csv', 'excel', 'json']).optional()
 });
+
+export const exportAttendanceQuerySchema = adminAttendanceQuerySchema;

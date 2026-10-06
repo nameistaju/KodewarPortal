@@ -4,6 +4,72 @@ import logger from '../utils/logger.js';
 import { mapEmployeeFromDb } from '../utils/supabaseHelpers.js';
 import { uploadChatMediaBuffer, deleteChatMedia } from './uploadService.js';
 
+const DEFAULT_CHANNELS = [
+  { name: 'General', description: 'Company-wide announcements and team chatter', type: 'CHANNEL', channel_type: 'PUBLIC', is_private: false, slug: 'general' },
+  { name: 'Development', description: 'Engineering, tech stack and coding discussions', type: 'CHANNEL', channel_type: 'PUBLIC', is_private: false, slug: 'development' },
+  { name: 'Design', description: 'UI/UX, graphic design and brand assets', type: 'CHANNEL', channel_type: 'PUBLIC', is_private: false, slug: 'design' },
+  { name: 'SEO & Marketing', description: 'Marketing campaigns, analytics and growth', type: 'CHANNEL', channel_type: 'PUBLIC', is_private: false, slug: 'marketing' },
+  { name: 'Content', description: 'Copywriting, documentation and social posts', type: 'CHANNEL', channel_type: 'PUBLIC', is_private: false, slug: 'content' },
+  { name: 'HR', description: 'Human Resources, confidential policies and employee support', type: 'CHANNEL', channel_type: 'PRIVATE', is_private: true, slug: 'hr' }
+];
+
+export const ensureDefaultChannelsExist = async () => {
+  try {
+    const { data: existingConvs } = await supabase
+      .from('conversations')
+      .select('*')
+      .eq('type', 'CHANNEL');
+
+    const existingSlugs = new Set((existingConvs || []).map((c) => c.slug || c.name?.toLowerCase()));
+
+    const { data: hrAdminEmps } = await supabase
+      .from('employees')
+      .select('id, role, department')
+      .eq('is_active', true);
+
+    const hrAdminIds = (hrAdminEmps || [])
+      .filter((e) => e.role === 'ADMIN' || (e.department && e.department.toUpperCase() === 'HR'))
+      .map((e) => e.id);
+
+    const now = new Date().toISOString();
+
+    for (const def of DEFAULT_CHANNELS) {
+      if (!existingSlugs.has(def.slug) && !existingSlugs.has(def.name.toLowerCase())) {
+        const { data: created, error } = await supabase
+          .from('conversations')
+          .insert({
+            name: def.name,
+            description: def.description,
+            type: def.type,
+            channel_type: def.channel_type,
+            is_private: def.is_private,
+            slug: def.slug,
+            created_at: now,
+            updated_at: now
+          })
+          .select('*')
+          .single();
+
+        if (!error && created) {
+          logger.info(`Created default channel: ${def.name}`, { id: created.id });
+
+          if (def.is_private && hrAdminIds.length > 0) {
+            const partRows = hrAdminIds.map((empId) => ({
+              conversation_id: created.id,
+              employee_id: empId,
+              role: 'ADMIN',
+              created_at: now
+            }));
+            await supabase.from('conversation_participants').insert(partRows);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    logger.warn('Non-fatal warning in ensureDefaultChannelsExist', { error: err.message });
+  }
+};
+
 const mapMessageFromDb = (row, senderMap = {}) => {
   if (!row) return null;
   const senderInfo = senderMap[row.sender_id] || { id: row.sender_id };
@@ -26,19 +92,34 @@ const mapMessageFromDb = (row, senderMap = {}) => {
   };
 };
 
-export const verifyConversationParticipant = async (conversationId, userId) => {
-  const { data: participant, error } = await supabase
+export const canUserAccessConversation = async (conversationId, userId, userRole = 'EMPLOYEE') => {
+  const { data: convRow, error } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('id', conversationId)
+    .single();
+
+  if (error || !convRow) return false;
+
+  if (userRole === 'ADMIN') return true;
+
+  const isPublicChannel = convRow.type === 'CHANNEL' && (convRow.is_private === false || convRow.channel_type === 'PUBLIC');
+  if (isPublicChannel) return true;
+
+  const { data: participant } = await supabase
     .from('conversation_participants')
     .select('id')
     .eq('conversation_id', conversationId)
     .eq('employee_id', userId)
     .maybeSingle();
 
-  if (error) {
-    logger.error('Error verifying conversation participant', { conversationId, userId, error: error.message });
-  }
-
   return Boolean(participant);
+};
+
+export const verifyConversationParticipant = async (conversationId, userId) => {
+  const { data: userRow } = await supabase.from('employees').select('role').eq('id', userId).maybeSingle();
+  const userRole = userRow?.role?.toUpperCase() || 'EMPLOYEE';
+  return await canUserAccessConversation(conversationId, userId, userRole);
 };
 
 export const getOrCreateDirectConversation = async (senderId, recipientId) => {
@@ -46,7 +127,6 @@ export const getOrCreateDirectConversation = async (senderId, recipientId) => {
     throw new AppError('Cannot start a chat conversation with yourself', 400);
   }
 
-  // Check if recipient exists and is active
   const { data: recipientRow } = await supabase
     .from('employees')
     .select('*')
@@ -57,7 +137,6 @@ export const getOrCreateDirectConversation = async (senderId, recipientId) => {
     throw new AppError('Recipient employee not found or inactive', 404);
   }
 
-  // Find existing conversation between senderId and recipientId
   const { data: senderParts } = await supabase
     .from('conversation_participants')
     .select('conversation_id')
@@ -89,7 +168,6 @@ export const getOrCreateDirectConversation = async (senderId, recipientId) => {
     }
   }
 
-  // Create new conversation
   const now = new Date().toISOString();
   const { data: newConv, error: convError } = await supabase
     .from('conversations')
@@ -101,7 +179,6 @@ export const getOrCreateDirectConversation = async (senderId, recipientId) => {
     throw new AppError(`Failed to create conversation: ${convError?.message || 'Database error'}`, 500);
   }
 
-  // Add participants
   const participantsData = [
     { conversation_id: newConv.id, employee_id: senderId, created_at: now },
     { conversation_id: newConv.id, employee_id: recipientId, created_at: now }
@@ -114,6 +191,94 @@ export const getOrCreateDirectConversation = async (senderId, recipientId) => {
   }
 
   return await getConversationDetails(newConv.id, senderId);
+};
+
+export const createChannel = async (creatorUser, payload) => {
+  const { name, description, type = 'CHANNEL', isPrivate = false, participantIds = [] } = payload;
+  const isChannel = type === 'CHANNEL';
+
+  if (isChannel && creatorUser.role !== 'ADMIN' && creatorUser.department?.toUpperCase() !== 'HR') {
+    throw new AppError('Only administrators or HR personnel can create channels', 403);
+  }
+
+  const now = new Date().toISOString();
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+  const { data: newConv, error } = await supabase
+    .from('conversations')
+    .insert({
+      name,
+      description: description || null,
+      type: isChannel ? 'CHANNEL' : 'GROUP',
+      is_private: Boolean(isPrivate),
+      channel_type: isPrivate ? 'PRIVATE' : 'PUBLIC',
+      slug,
+      owner_id: creatorUser.id || creatorUser._id,
+      created_at: now,
+      updated_at: now
+    })
+    .select('*')
+    .single();
+
+  if (error || !newConv) {
+    throw new AppError(`Failed to create ${type.toLowerCase()}: ${error?.message || 'Database error'}`, 500);
+  }
+
+  const creatorId = creatorUser.id || creatorUser._id;
+  const allParticipantIds = Array.from(new Set([String(creatorId), ...(participantIds || [])]));
+
+  const partRows = allParticipantIds.map((empId) => ({
+    conversation_id: newConv.id,
+    employee_id: empId,
+    role: String(empId) === String(creatorId) ? 'OWNER' : 'MEMBER',
+    created_at: now
+  }));
+
+  await supabase.from('conversation_participants').insert(partRows);
+
+  return await getConversationDetails(newConv.id, creatorId);
+};
+
+export const addChannelMember = async (requestUser, conversationId, targetEmployeeId, role = 'MEMBER') => {
+  const canAccess = await canUserAccessConversation(conversationId, requestUser.id || requestUser._id, requestUser.role);
+  if (!canAccess) {
+    throw new AppError('You do not have permission to modify this channel/group', 403);
+  }
+
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from('conversation_participants')
+    .upsert({
+      conversation_id: conversationId,
+      employee_id: targetEmployeeId,
+      role,
+      created_at: now
+    }, { onConflict: 'conversation_id,employee_id' });
+
+  if (error) {
+    throw new AppError(`Failed to add member: ${error.message}`, 500);
+  }
+
+  return await getConversationDetails(conversationId, requestUser.id || requestUser._id);
+};
+
+export const removeChannelMember = async (requestUser, conversationId, targetEmployeeId) => {
+  const canAccess = await canUserAccessConversation(conversationId, requestUser.id || requestUser._id, requestUser.role);
+  if (!canAccess) {
+    throw new AppError('You do not have permission to modify this channel/group', 403);
+  }
+
+  const { error } = await supabase
+    .from('conversation_participants')
+    .delete()
+    .eq('conversation_id', conversationId)
+    .eq('employee_id', targetEmployeeId);
+
+  if (error) {
+    throw new AppError(`Failed to remove member: ${error.message}`, 500);
+  }
+
+  return { success: true, conversationId, removedEmployeeId: targetEmployeeId };
 };
 
 export const getConversationDetails = async (conversationId, currentUserId) => {
@@ -129,7 +294,7 @@ export const getConversationDetails = async (conversationId, currentUserId) => {
 
   const { data: partRows } = await supabase
     .from('conversation_participants')
-    .select('employee_id')
+    .select('employee_id, role')
     .eq('conversation_id', conversationId);
 
   const participantIds = (partRows || []).map((p) => p.employee_id);
@@ -141,7 +306,6 @@ export const getConversationDetails = async (conversationId, currentUserId) => {
 
   const participants = (empRows || []).map(mapEmployeeFromDb);
 
-  // Get last non-expired message
   const nowIso = new Date().toISOString();
   const { data: msgRows } = await supabase
     .from('messages')
@@ -163,8 +327,14 @@ export const getConversationDetails = async (conversationId, currentUserId) => {
     _id: String(convRow.id),
     id: String(convRow.id),
     type: convRow.type || 'DIRECT',
+    name: convRow.name || null,
+    description: convRow.description || null,
+    isPrivate: Boolean(convRow.is_private),
+    channelType: convRow.channel_type || (convRow.is_private ? 'PRIVATE' : 'PUBLIC'),
+    slug: convRow.slug || null,
+    ownerId: convRow.owner_id ? String(convRow.owner_id) : null,
     participants,
-    otherParticipant: participants.find((p) => p.id !== String(currentUserId)) || null,
+    otherParticipant: convRow.type === 'DIRECT' ? (participants.find((p) => p.id !== String(currentUserId)) || null) : null,
     lastMessage,
     createdAt: convRow.created_at,
     updatedAt: convRow.updated_at
@@ -172,29 +342,50 @@ export const getConversationDetails = async (conversationId, currentUserId) => {
 };
 
 export const getUserConversations = async (userId) => {
-  const { data: userParts, error: partError } = await supabase
+  await ensureDefaultChannelsExist();
+
+  const { data: userRow } = await supabase.from('employees').select('role, department').eq('id', userId).maybeSingle();
+  const userRole = userRow?.role?.toUpperCase() || 'EMPLOYEE';
+  const userDept = userRow?.department?.toUpperCase() || '';
+
+  const { data: userParts } = await supabase
     .from('conversation_participants')
     .select('conversation_id')
     .eq('employee_id', userId);
 
-  if (partError) {
-    throw new AppError(`Failed to fetch user conversations: ${partError.message}`, 500);
-  }
+  const participantConvIds = (userParts || []).map((p) => p.conversation_id);
 
-  const convIds = (userParts || []).map((p) => p.conversation_id);
-  if (convIds.length === 0) return [];
+  const { data: publicChannels } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('type', 'CHANNEL')
+    .or('is_private.eq.false,channel_type.eq.PUBLIC');
+
+  const publicChannelIds = (publicChannels || []).map((c) => c.id);
+
+  const allAccessibleIds = Array.from(new Set([...participantConvIds, ...publicChannelIds]));
+  if (allAccessibleIds.length === 0) return [];
 
   const conversations = [];
-  for (const cid of convIds) {
+  for (const cid of allAccessibleIds) {
     try {
       const details = await getConversationDetails(cid, userId);
+
+      if (details.type === 'CHANNEL' && details.isPrivate) {
+        const isMember = details.participants.some((p) => String(p.id) === String(userId));
+        const isAdmin = userRole === 'ADMIN';
+        const isHrMember = userDept === 'HR' && details.slug === 'hr';
+        if (!isMember && !isAdmin && !isHrMember) {
+          continue;
+        }
+      }
+
       conversations.push(details);
     } catch {
       // Ignore stale / deleted conversations
     }
   }
 
-  // Sort by latest message date or updated_at DESC
   conversations.sort((a, b) => {
     const timeA = new Date(a.lastMessage?.createdAt || a.updatedAt).getTime();
     const timeB = new Date(b.lastMessage?.createdAt || b.updatedAt).getTime();
@@ -207,7 +398,7 @@ export const getUserConversations = async (userId) => {
 export const getConversationMessages = async (conversationId, userId, query = {}) => {
   const isParticipant = await verifyConversationParticipant(conversationId, userId);
   if (!isParticipant) {
-    throw new AppError('You are not a participant in this conversation', 403);
+    throw new AppError('You are not authorized to view messages in this conversation/channel', 403);
   }
 
   const page = Math.max(1, Number(query.page || 1));
@@ -216,7 +407,6 @@ export const getConversationMessages = async (conversationId, userId, query = {}
   const to = from + limit - 1;
   const nowIso = new Date().toISOString();
 
-  // Fetch count
   const { count, error: countError } = await supabase
     .from('messages')
     .select('id', { count: 'exact', head: true })
@@ -227,7 +417,6 @@ export const getConversationMessages = async (conversationId, userId, query = {}
     throw new AppError(`Failed to count messages: ${countError.message}`, 500);
   }
 
-  // Fetch paginated messages sorted DESC for correct pagination
   const { data: rows, error: msgError } = await supabase
     .from('messages')
     .select('*')
@@ -240,7 +429,6 @@ export const getConversationMessages = async (conversationId, userId, query = {}
     throw new AppError(`Failed to fetch messages: ${msgError.message}`, 500);
   }
 
-  // Extract unique senders
   const senderIds = Array.from(new Set((rows || []).map((r) => r.sender_id)));
   let senderMap = {};
 
@@ -251,7 +439,6 @@ export const getConversationMessages = async (conversationId, userId, query = {}
     });
   }
 
-  // Map and reverse to ascending order for client UI timeline
   const items = (rows || []).map((r) => mapMessageFromDb(r, senderMap)).reverse();
   const total = count || items.length;
 
@@ -269,7 +456,7 @@ export const getConversationMessages = async (conversationId, userId, query = {}
 export const sendTextMessage = async (conversationId, senderId, content) => {
   const isParticipant = await verifyConversationParticipant(conversationId, senderId);
   if (!isParticipant) {
-    throw new AppError('You are not a participant in this conversation', 403);
+    throw new AppError('You are not authorized to send messages to this conversation/channel', 403);
   }
 
   const cleanContent = String(content || '').trim();
@@ -303,13 +490,11 @@ export const sendTextMessage = async (conversationId, senderId, content) => {
     throw new AppError(`Failed to send message: ${error?.message || 'Database error'}`, 500);
   }
 
-  // Update conversation updated_at
   await supabase
     .from('conversations')
     .update({ updated_at: now.toISOString() })
     .eq('id', conversationId);
 
-  // Fetch sender employee details
   const { data: senderRow } = await supabase.from('employees').select('*').eq('id', senderId).single();
   const senderEmp = senderRow ? mapEmployeeFromDb(senderRow) : { id: senderId };
 
@@ -319,7 +504,7 @@ export const sendTextMessage = async (conversationId, senderId, content) => {
 export const sendMediaMessage = async (conversationId, senderId, file, payload = {}) => {
   const isParticipant = await verifyConversationParticipant(conversationId, senderId);
   if (!isParticipant) {
-    throw new AppError('You are not a participant in this conversation', 403);
+    throw new AppError('You are not authorized to send media to this conversation/channel', 403);
   }
 
   if (!file) {
@@ -367,13 +552,11 @@ export const sendMediaMessage = async (conversationId, senderId, file, payload =
     throw new AppError(`Failed to save media message: ${error?.message || 'Database error'}`, 500);
   }
 
-  // Update conversation updated_at
   await supabase
     .from('conversations')
     .update({ updated_at: now.toISOString() })
     .eq('id', conversationId);
 
-  // Fetch sender details
   const { data: senderRow } = await supabase.from('employees').select('*').eq('id', senderId).single();
   const senderEmp = senderRow ? mapEmployeeFromDb(senderRow) : { id: senderId };
 

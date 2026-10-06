@@ -33,3 +33,18 @@ export const sendMediaMessage = async (conversationId, file, messageType = 'IMAG
   });
   return unwrap(response);
 };
+
+export const createChannel = async (payload) => {
+  const response = await api.post('/chat/channels', payload);
+  return unwrap(response);
+};
+
+export const addChannelMember = async (conversationId, employeeId, role = 'MEMBER') => {
+  const response = await api.post(`/chat/channels/${conversationId}/members`, { employeeId, role });
+  return unwrap(response);
+};
+
+export const removeChannelMember = async (conversationId, employeeId) => {
+  const response = await api.delete(`/chat/channels/${conversationId}/members/${employeeId}`);
+  return unwrap(response);
+};
