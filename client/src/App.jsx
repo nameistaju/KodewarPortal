@@ -16,6 +16,7 @@ import Announcements from "./pages/Announcements"
 import Teams from "./pages/Teams"
 import ChangePassword from "./pages/ChangePassword"
 import Loading from "./components/Loading"
+import HrDashboard from "./pages/HrDashboard"
 import { useAuth } from "./context/AuthContext"
 import ProtectedRoute from "./components/ProtectedRoute"
 
@@ -71,6 +72,10 @@ const App = () => {
             <Route path="/leave" element={<Leave />}/>
             <Route path="/announcements" element={<Announcements />}/>
             <Route path="/settings" element={<Settings />}/>
+
+            <Route element={<ProtectedRoute allowedRoles={['HR', 'ADMIN']} />}>
+              <Route path="/hr" element={<HrDashboard />}/>
+            </Route>
 
             <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
               <Route path="/admin/dashboard" element={<Dashboard />}/>

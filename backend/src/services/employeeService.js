@@ -44,7 +44,7 @@ export const createEmployee = async (payload, _creatorId, file) => {
     department: payload.department || 'DEVELOPMENT',
     designation: designationStr,
     joining_date: payload.joiningDate || new Date().toISOString().slice(0, 10),
-    role: userRole === 'admin' ? 'admin' : 'employee',
+    role: userRole === 'admin' ? 'admin' : (userRole === 'hr' ? 'hr' : 'employee'),
     leave_balance_casual: payload.leaveBalanceCasual ?? 12,
     leave_balance_sick: payload.leaveBalanceSick ?? 12,
     is_active: payload.status !== 'INACTIVE'
@@ -164,7 +164,10 @@ export const updateEmployee = async (employeeId, payload, _adminId, file) => {
 
   updateData.designation = currentPhotoUrl ? `${cleanDesig}||${currentPhotoUrl}||${currentPublicId || ''}` : cleanDesig;
 
-  if (payload.role) updateData.role = payload.role.toLowerCase() === 'admin' ? 'admin' : 'employee';
+  if (payload.role) {
+    const r = payload.role.toLowerCase();
+    updateData.role = r === 'admin' ? 'admin' : (r === 'hr' ? 'hr' : 'employee');
+  }
   if (payload.status !== undefined) updateData.is_active = payload.status === 'ACTIVE';
   if (payload.leaveBalanceCasual !== undefined) updateData.leave_balance_casual = Number(payload.leaveBalanceCasual);
   if (payload.leaveBalanceSick !== undefined) updateData.leave_balance_sick = Number(payload.leaveBalanceSick);

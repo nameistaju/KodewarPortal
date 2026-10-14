@@ -32,9 +32,11 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
+    "imapflow": "^2.4.2",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
     "node-cron": "^4.6.0",
+    "nodemailer": "^10.1.1",
     "pg": "^8.23.0",
     "zod": "^4.2.1"
   },

@@ -44,7 +44,8 @@ const Attendance = () => {
     fetchData();
   }, [fetchData]);
 
-  if (user?.role === 'ADMIN') return <Navigate to="/dashboard" replace />;
+  const roleUpper = user?.role?.toUpperCase();
+  if (roleUpper === 'ADMIN' || roleUpper === 'HR') return <Navigate to={roleUpper === 'HR' ? '/hr' : '/dashboard'} replace />;
   if (loading) return <DashboardLoader />;
 
   const isPunchedIn = Boolean(todayRecord?.punchIn?.time && !todayRecord?.punchOut?.time);

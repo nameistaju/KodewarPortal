@@ -28,7 +28,7 @@ export const ensureDefaultChannelsExist = async () => {
       .eq('is_active', true);
 
     const hrAdminIds = (hrAdminEmps || [])
-      .filter((e) => e.role === 'ADMIN' || (e.department && e.department.toUpperCase() === 'HR'))
+      .filter((e) => e.role === 'ADMIN' || e.role === 'HR' || (e.department && e.department.toUpperCase() === 'HR'))
       .map((e) => e.id);
 
     const now = new Date().toISOString();
@@ -92,7 +92,7 @@ const mapMessageFromDb = (row, senderMap = {}) => {
   };
 };
 
-export const canUserAccessConversation = async (conversationId, userId, userRole = 'EMPLOYEE') => {
+export const canUserAccessConversation = async (conversationId, userId, userRole = null, userDept = null) => {
   const { data: convRow, error } = await supabase
     .from('conversations')
     .select('*')
@@ -101,11 +101,36 @@ export const canUserAccessConversation = async (conversationId, userId, userRole
 
   if (error || !convRow) return false;
 
-  if (userRole === 'ADMIN') return true;
+  let roleUpper = userRole?.toUpperCase();
+  let deptUpper = userDept?.toUpperCase();
 
+  if (!roleUpper || deptUpper === undefined || deptUpper === null) {
+    const { data: empRow } = await supabase
+      .from('employees')
+      .select('role, department')
+      .eq('id', userId)
+      .maybeSingle();
+    if (empRow) {
+      if (!roleUpper) roleUpper = empRow.role?.toUpperCase() || 'EMPLOYEE';
+      if (deptUpper === undefined || deptUpper === null) deptUpper = empRow.department?.toUpperCase() || null;
+    }
+  }
+
+  // 1. Administrators retain universal access
+  if (roleUpper === 'ADMIN') return true;
+
+  // 2. Public channels are accessible to all authenticated active users
   const isPublicChannel = convRow.type === 'CHANNEL' && (convRow.is_private === false || convRow.channel_type === 'PUBLIC');
   if (isPublicChannel) return true;
 
+  // 3. Narrow, verified HR channel authorization:
+  // ONLY for CHANNEL conversations whose verified database slug is 'hr' (or name is 'HR')
+  const isHrChannel = convRow.type === 'CHANNEL' && (convRow.slug === 'hr' || convRow.name?.trim().toLowerCase() === 'hr');
+  const isAuthorizedHr = (roleUpper === 'HR' || deptUpper === 'HR') && isHrChannel;
+  if (isAuthorizedHr) return true;
+
+  // 4. For all other private channels, groups, and direct messages:
+  // strict verification of participant row
   const { data: participant } = await supabase
     .from('conversation_participants')
     .select('id')
@@ -117,9 +142,10 @@ export const canUserAccessConversation = async (conversationId, userId, userRole
 };
 
 export const verifyConversationParticipant = async (conversationId, userId) => {
-  const { data: userRow } = await supabase.from('employees').select('role').eq('id', userId).maybeSingle();
+  const { data: userRow } = await supabase.from('employees').select('role, department').eq('id', userId).maybeSingle();
   const userRole = userRow?.role?.toUpperCase() || 'EMPLOYEE';
-  return await canUserAccessConversation(conversationId, userId, userRole);
+  const userDept = userRow?.department?.toUpperCase() || null;
+  return await canUserAccessConversation(conversationId, userId, userRole, userDept);
 };
 
 export const getOrCreateDirectConversation = async (senderId, recipientId) => {
@@ -197,7 +223,7 @@ export const createChannel = async (creatorUser, payload) => {
   const { name, description, type = 'CHANNEL', isPrivate = false, participantIds = [] } = payload;
   const isChannel = type === 'CHANNEL';
 
-  if (isChannel && creatorUser.role !== 'ADMIN' && creatorUser.department?.toUpperCase() !== 'HR') {
+  if (isChannel && creatorUser.role !== 'ADMIN' && creatorUser.role !== 'HR' && creatorUser.department?.toUpperCase() !== 'HR') {
     throw new AppError('Only administrators or HR personnel can create channels', 403);
   }
 
@@ -240,7 +266,7 @@ export const createChannel = async (creatorUser, payload) => {
 };
 
 export const addChannelMember = async (requestUser, conversationId, targetEmployeeId, role = 'MEMBER') => {
-  const canAccess = await canUserAccessConversation(conversationId, requestUser.id || requestUser._id, requestUser.role);
+  const canAccess = await canUserAccessConversation(conversationId, requestUser.id || requestUser._id, requestUser.role, requestUser.department);
   if (!canAccess) {
     throw new AppError('You do not have permission to modify this channel/group', 403);
   }
@@ -263,7 +289,7 @@ export const addChannelMember = async (requestUser, conversationId, targetEmploy
 };
 
 export const removeChannelMember = async (requestUser, conversationId, targetEmployeeId) => {
-  const canAccess = await canUserAccessConversation(conversationId, requestUser.id || requestUser._id, requestUser.role);
+  const canAccess = await canUserAccessConversation(conversationId, requestUser.id || requestUser._id, requestUser.role, requestUser.department);
   if (!canAccess) {
     throw new AppError('You do not have permission to modify this channel/group', 403);
   }
@@ -363,7 +389,17 @@ export const getUserConversations = async (userId) => {
 
   const publicChannelIds = (publicChannels || []).map((c) => c.id);
 
-  const allAccessibleIds = Array.from(new Set([...participantConvIds, ...publicChannelIds]));
+  let hrChannelIds = [];
+  if (userRole === 'HR' || userDept === 'HR' || userRole === 'ADMIN') {
+    const { data: hrConvs } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('type', 'CHANNEL')
+      .or('slug.eq.hr,name.ilike.HR');
+    hrChannelIds = (hrConvs || []).map((c) => c.id);
+  }
+
+  const allAccessibleIds = Array.from(new Set([...participantConvIds, ...publicChannelIds, ...hrChannelIds]));
   if (allAccessibleIds.length === 0) return [];
 
   const conversations = [];
@@ -374,8 +410,9 @@ export const getUserConversations = async (userId) => {
       if (details.type === 'CHANNEL' && details.isPrivate) {
         const isMember = details.participants.some((p) => String(p.id) === String(userId));
         const isAdmin = userRole === 'ADMIN';
-        const isHrMember = userDept === 'HR' && details.slug === 'hr';
-        if (!isMember && !isAdmin && !isHrMember) {
+        const isHrChannel = details.slug === 'hr' || details.name?.trim().toLowerCase() === 'hr';
+        const isAuthorizedHr = (userRole === 'HR' || userDept === 'HR') && isHrChannel;
+        if (!isMember && !isAdmin && !isAuthorizedHr) {
           continue;
         }
       }

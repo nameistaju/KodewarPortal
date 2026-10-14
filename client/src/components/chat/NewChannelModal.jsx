@@ -8,7 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 
 const NewChannelModal = ({ isOpen, onClose, onCreated }) => {
   const { user } = useAuth();
-  const isAdminOrHr = user?.role === 'ADMIN' || user?.department?.toUpperCase() === 'HR';
+  const isAdminOrHr = user?.role === 'ADMIN' || user?.role === 'HR' || user?.department?.toUpperCase() === 'HR';
 
   const [type, setType] = useState('CHANNEL');
   const [name, setName] = useState('');

@@ -19,9 +19,10 @@ const LoginForm = () => {
 
   // If already logged in, redirect based on verified user role
   if (user) {
+    const roleUpper = user.role?.toUpperCase();
     const target = (user.mustChangePassword || user.forcePasswordChange)
       ? '/change-password'
-      : (user.role === 'ADMIN' ? '/admin/dashboard' : '/dashboard')
+      : (roleUpper === 'ADMIN' ? '/admin/dashboard' : (roleUpper === 'HR' ? '/hr' : '/dashboard'))
     return <Navigate to={target} replace />
   }
 
@@ -31,9 +32,10 @@ const LoginForm = () => {
     try {
       const authUser = await login(email, password)
       const mustChange = authUser?.mustChangePassword || authUser?.forcePasswordChange
+      const roleUpper = authUser?.role?.toUpperCase();
       const path = mustChange
         ? '/change-password'
-        : (authUser?.role === 'ADMIN' ? '/admin/dashboard' : '/dashboard')
+        : (roleUpper === 'ADMIN' ? '/admin/dashboard' : (roleUpper === 'HR' ? '/hr' : '/dashboard'))
       navigate(path, { replace: true })
     } catch (error) {
       toast.error(getErrorMessage(error) || 'Invalid email or password.')

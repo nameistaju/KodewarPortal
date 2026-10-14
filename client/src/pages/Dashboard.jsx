@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react"
+import { Navigate } from "react-router-dom"
 import EmployeeDashboard from "../components/EmployeeDashboard"
 import AdminDashboard from "../components/AdminDashboard"
 import api from "../api/axios"
@@ -27,9 +28,10 @@ const defaultAdminData = {
 const Dashboard = () => {
   const { user, token } = useAuth()
   const [data, setData] = useState(null)
+  const isHr = user?.role?.toUpperCase() === 'HR'
 
   const fetchDashboard = useCallback(async () => {
-    if (!token || !user) return;
+    if (!token || !user || isHr) return;
     try {
       const endpoint = user.role === "ADMIN" ? "/dashboard/admin" : "/dashboard/employee";
       const res = await api.get(endpoint);
@@ -37,11 +39,17 @@ const Dashboard = () => {
     } catch (err) {
       toastError(err);
     }
-  }, [token, user]);
+  }, [token, user, isHr]);
 
   useEffect(() => {
-    fetchDashboard();
-  }, [fetchDashboard]);
+    if (!isHr) {
+      fetchDashboard();
+    }
+  }, [fetchDashboard, isHr]);
+
+  if (isHr) {
+    return <Navigate to="/hr" replace />
+  }
 
   const activeData = data || (user?.role === "ADMIN" ? defaultAdminData : defaultEmployeeData);
 

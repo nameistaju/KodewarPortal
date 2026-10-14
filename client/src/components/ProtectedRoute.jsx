@@ -17,8 +17,13 @@ export default function ProtectedRoute({ allowedRoles }) {
     return <Navigate to="/change-password" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
+  if (allowedRoles) {
+    const userRole = user.role?.toUpperCase();
+    const isAllowed = allowedRoles.map((r) => r.toUpperCase()).includes(userRole);
+    if (!isAllowed) {
+      const fallbackPath = userRole === 'HR' ? '/hr' : '/dashboard';
+      return <Navigate to={fallbackPath} replace />;
+    }
   }
 
   return <Outlet />;

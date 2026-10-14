@@ -29,10 +29,15 @@ export const employeeIdParamsSchema = z.object({
   employeeId: objectId
 });
 
+const roleSchema = z.preprocess(
+  (val) => (typeof val === 'string' ? val.toUpperCase() : val),
+  z.enum(Object.values(ROLES))
+);
+
 export const employeeQuerySchema = paginationQuerySchema.extend({
-  department: z.enum(Object.values(DEPARTMENTS)).optional(),
-  status: z.enum(Object.values(EMPLOYEE_STATUS)).optional(),
-  role: z.enum(Object.values(ROLES)).optional(),
+  department: z.preprocess(emptyToUndefined, z.enum(Object.values(DEPARTMENTS)).optional()),
+  status: z.preprocess(emptyToUndefined, z.enum(Object.values(EMPLOYEE_STATUS)).optional()),
+  role: z.preprocess((val) => (typeof val === 'string' ? val.toUpperCase() : undefined), z.enum(Object.values(ROLES)).optional()),
   teamId: objectId.optional()
 });
 
@@ -53,7 +58,7 @@ const employeeBaseSchema = z.object({
   department: z.preprocess(emptyToUndefined, z.enum(Object.values(DEPARTMENTS)).optional()),
   dob: z.preprocess(emptyToUndefined, z.coerce.date().optional()),
   joinDate: z.preprocess(emptyToUndefined, z.coerce.date().optional()),
-  role: z.enum(Object.values(ROLES)).default(ROLES.EMPLOYEE),
+  role: roleSchema.default(ROLES.EMPLOYEE),
   teamId: z.preprocess(emptyToUndefined, objectId.optional()),
   status: z.preprocess(emptyToUndefined, z.enum(Object.values(EMPLOYEE_STATUS)).optional()),
   profilePhoto: profilePhotoSchema,

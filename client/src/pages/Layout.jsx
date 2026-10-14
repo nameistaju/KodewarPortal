@@ -162,15 +162,22 @@ const Layout = () => {
     return <Navigate to="/change-password" replace />
   }
 
-  const role = user?.role
+  const role = user?.role?.toUpperCase();
 
   // Mobile Bottom Bar Primary Destinations (Home, Attendance, Leave, More)
-  const mobileNavDestinations = [
-    { name: "Home", href: "/dashboard", icon: LayoutGrid },
-    { name: "Chat", href: "/chat", icon: MessageSquare },
-    { name: "Attendance", href: role === "ADMIN" ? "/admin-attendance" : "/attendance", icon: Calendar },
-    { name: "Leave", href: "/leave", icon: FileText },
-  ]
+  const mobileNavDestinations = role === "HR"
+    ? [
+        { name: "Recruitment", href: "/hr", icon: LayoutGrid },
+        { name: "Chat", href: "/chat", icon: MessageSquare },
+        { name: "Announcements", href: "/announcements", icon: Bell },
+        { name: "Settings", href: "/settings", icon: Settings },
+      ]
+    : [
+        { name: "Home", href: "/dashboard", icon: LayoutGrid },
+        { name: "Chat", href: "/chat", icon: MessageSquare },
+        { name: "Attendance", href: role === "ADMIN" ? "/admin-attendance" : "/attendance", icon: Calendar },
+        { name: "Leave", href: "/leave", icon: FileText },
+      ];
 
   return (
     <EmployeeTrackingProvider enabled={role === 'EMPLOYEE'}>
@@ -240,7 +247,7 @@ const Layout = () => {
                 <div className="hidden sm:block text-left">
                   <p className="text-xs font-bold text-black leading-none">{user.name}</p>
                   <p className="text-[10px] text-neutral-500 mt-0.5 leading-none">
-                    {role === "ADMIN" ? "Admin" : "Employee"}
+                    {role === "ADMIN" ? "Admin" : (role === "HR" ? "HR Specialist" : "Employee")}
                   </p>
                 </div>
               </button>
@@ -260,7 +267,7 @@ const Layout = () => {
                         <Avatar user={user} size="h-10 w-10" className="border border-neutral-300" fallbackClassName="bg-neutral-900 text-white text-sm" />
                         <div className="min-w-0">
                           <p className="truncate text-xs font-bold text-black">{user.name}</p>
-                          <p className="text-[10px] text-neutral-500">{role === "ADMIN" ? "Admin" : "Employee"}</p>
+                          <p className="text-[10px] text-neutral-500">{role === "ADMIN" ? "Admin" : (role === "HR" ? "HR Specialist" : "Employee")}</p>
                         </div>
                       </div>
                       <Link

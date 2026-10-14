@@ -40,7 +40,7 @@ const Sidebar = () => {
     }, [mobileOpen]);
 
     const normalizedRole = user?.role?.toUpperCase();
-    const role = normalizedRole === "ADMIN" ? "ADMIN" : "EMPLOYEE";
+    const role = normalizedRole === "ADMIN" ? "ADMIN" : (normalizedRole === "HR" ? "HR" : "EMPLOYEE");
     const userName = employeeName(user);
 
     const employeeNavigation = [
@@ -48,6 +48,13 @@ const Sidebar = () => {
         {name: "Chat", href: "/chat", icon: MessageSquareIcon},
         {name: "Attendance", href: "/attendance", icon: CalendarIcon},
         {name: "Leave", href: "/leave", icon: FileTextIcon},
+        {name: "Announcements", href: "/announcements", icon: BellIcon},
+        {name: "Profile & Settings", href: "/settings", icon: SettingsIcon},
+    ]
+
+    const hrNavigation = [
+        {name: "Recruitment", href: "/hr", icon: LayoutGridIcon},
+        {name: "Chat", href: "/chat", icon: MessageSquareIcon},
         {name: "Announcements", href: "/announcements", icon: BellIcon},
         {name: "Profile & Settings", href: "/settings", icon: SettingsIcon},
     ]
@@ -63,7 +70,7 @@ const Sidebar = () => {
         {name: "Settings", href: "/settings", icon: SettingsIcon},
     ]
 
-    const navItems = role === "ADMIN" ? adminNavigation : employeeNavigation
+    const navItems = role === "ADMIN" ? adminNavigation : (role === "HR" ? hrNavigation : employeeNavigation)
 
     const handleLogout = ()=>{
         logout()
@@ -106,12 +113,12 @@ const Sidebar = () => {
                 {userName && (
                     <div className={`transition-all duration-300 ${showCollapsed ? 'mx-0 px-0 bg-transparent border-transparent shadow-none mt-6' : 'mx-3 p-3 bg-neutral-900/90 border border-neutral-800 shadow-md mt-4'} rounded-xl shrink-0`}>
                         <div className={`flex items-center ${showCollapsed ? 'justify-center' : 'gap-3'}`}>
-                            <div className='w-9 h-9 rounded-xl bg-neutral-800 flex items-center justify-center ring-1 ring-neutral-700 shrink-0 overflow-hidden' title={showCollapsed ? `${userName} (${role === "ADMIN" ? "Administrator" : "Employee"})` : undefined}>
+                            <div className='w-9 h-9 rounded-xl bg-neutral-800 flex items-center justify-center ring-1 ring-neutral-700 shrink-0 overflow-hidden' title={showCollapsed ? `${userName} (${role === "ADMIN" ? "Administrator" : (role === "HR" ? "HR Specialist" : "Employee")})` : undefined}>
                                 <Avatar user={user} name={userName} size="w-9 h-9" className="ring-1 ring-neutral-700" fallbackClassName="bg-neutral-800 text-white text-xs" />
                             </div>
                             <div className={`transition-all duration-300 overflow-hidden whitespace-nowrap flex flex-col ${showCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100 flex-1 min-w-0'}`}>
                                 <p className='text-[13px] font-bold text-white truncate'>{userName}</p>
-                                <p className='text-[11px] text-neutral-400 font-medium truncate'>{role === "ADMIN" ? "Administrator" : "Employee"}</p>
+                                <p className='text-[11px] text-neutral-400 font-medium truncate'>{role === "ADMIN" ? "Administrator" : (role === "HR" ? "HR Specialist" : "Employee")}</p>
                             </div>
                         </div>
                     </div>

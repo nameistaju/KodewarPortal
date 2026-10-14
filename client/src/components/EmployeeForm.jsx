@@ -646,6 +646,7 @@ const EmployeeForm = ({ initialData, onSuccess, onCancel, onSuccessStateChange }
                     className="w-full rounded-xl px-3.5 py-2.5 text-black border border-neutral-200 focus:border-black focus:outline-none cursor-pointer disabled:bg-neutral-100 disabled:opacity-70"
                   >
                     <option value="EMPLOYEE">Employee</option>
+                    <option value="HR">HR</option>
                     <option value="TEAM_LEAD">Team Lead</option>
                     <option value="MANAGER">Manager</option>
                     <option value="ADMIN">Admin</option>
