@@ -13,7 +13,7 @@
  *   --force         Bypass TITAN_MAIL_ENABLED=false check for testing
  */
 
-import 'dotenv/config';
+import '../src/config/loadEnv.js';
 import { syncHrMailbox, getMailboxSyncStatus } from '../src/services/hrMailboxIngestionService.js';
 import { getTitanMailConfig, sanitizeErrorMessage } from '../src/config/titanMailConfig.js';
 

@@ -1,3 +1,5 @@
+import './loadEnv.js';
+
 export const isProduction = (process.env.NODE_ENV || 'development') === 'production';
 
 export const env = {

@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '../src/config/loadEnv.js';
 import { ImapFlow } from 'imapflow';
 import nodemailer from 'nodemailer';
 import { getTitanMailConfig, sanitizeErrorMessage } from '../src/config/titanMailConfig.js';
