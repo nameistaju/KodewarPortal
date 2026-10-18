@@ -84,15 +84,13 @@ test('Stage B3.5 Disabled Mode: Does not start scheduler or execute sync when di
   assert.equal(syncCalled, false, 'syncHrMailbox must not be called when TITAN_MAIL_SYNC_ENABLED is false');
 });
 
-test('Stage B3.5 Scheduler Lifecycle: Startup and shutdown manage cron job cleanly', () => {
+test('Stage B3.5 Scheduler Lifecycle: Startup and shutdown manage cron job cleanly', async () => {
   let scheduledCron = null;
-  let scheduledCallback = null;
   let stoppedCron = false;
 
   const mockCronModule = {
     schedule: (expression, callback) => {
       scheduledCron = expression;
-      scheduledCallback = callback;
       return {
         stop: () => {
           stoppedCron = true;
@@ -108,6 +106,35 @@ test('Stage B3.5 Scheduler Lifecycle: Startup and shutdown manage cron job clean
 
   const initialStatus = getSchedulerStatus();
   assert.equal(initialStatus.isCronActive, false);
+});
+
+test('Stage B3.5 Graceful Shutdown: stopMailboxSyncScheduler waits for in-progress sync', async () => {
+  let syncCompleted = false;
+
+  const mockSyncFn = async () => {
+    await new Promise((r) => setTimeout(r, 100));
+    syncCompleted = true;
+    return { status: 'SUCCESS', syncedCount: 1, lastSyncedUid: 200 };
+  };
+
+  // Launch sync in background
+  const syncPromise = executeScheduledSync({
+    syncFn: mockSyncFn,
+    configOverride: validMockConfig
+  });
+
+  // Verify job is running
+  const statusRunning = getSchedulerStatus();
+  assert.equal(statusRunning.isJobRunning, true);
+
+  // Trigger stopMailboxSyncScheduler with timeout
+  await stopMailboxSyncScheduler(1000);
+
+  await syncPromise;
+  assert.equal(syncCompleted, true);
+
+  const statusAfter = getSchedulerStatus();
+  assert.equal(statusAfter.isJobRunning, false);
 });
 
 test('Stage B3.5 In-Process Overlap Guard: Prevents overlapping executions when job is in flight', async () => {

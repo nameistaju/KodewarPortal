@@ -106,7 +106,7 @@ export const executeScheduledSync = async ({
           folder: 'INBOX',
           maxMessages: batchLimit,
           dryRun: false,
-          forceEnabled: true, // We already verified config.enabled && config.sync.enabled
+          forceEnabled: false, // Strict: relies on config.enabled === true as secondary defense
           config
         };
 
@@ -252,13 +252,28 @@ export const startMailboxSyncScheduler = ({
 
 /**
  * Stops and unregisters the mailbox sync cron scheduler.
+ * Optionally waits for any in-progress sync iteration to complete cleanly.
+ * @param {number} [timeoutMs=5000]
  */
-export const stopMailboxSyncScheduler = () => {
+export const stopMailboxSyncScheduler = async (timeoutMs = 5000) => {
   if (cronJob) {
     cronJob.stop();
     cronJob = null;
     schedulerState.isCronActive = false;
     logger.info('Stopped HR mailbox sync scheduler');
+  }
+
+  if (isJobRunning) {
+    logger.info('Waiting for active HR mailbox sync to complete cleanly before shutdown...', { timeoutMs });
+    const start = Date.now();
+    while (isJobRunning && (Date.now() - start < timeoutMs)) {
+      await defaultSleep(200);
+    }
+    if (isJobRunning) {
+      logger.warn('Active HR mailbox sync did not finish within shutdown timeout. Proceeding with shutdown.');
+    } else {
+      logger.info('Active HR mailbox sync finished cleanly before shutdown.');
+    }
   }
 };
 

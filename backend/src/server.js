@@ -32,7 +32,7 @@ const shutdown = async (signal) => {
   logger.info('Shutdown signal received', { signal });
   stopAutoCloseScheduler();
   stopChatCleanupScheduler();
-  stopMailboxSyncScheduler();
+  await stopMailboxSyncScheduler();
 
   if (server) {
     server.close(async () => {
