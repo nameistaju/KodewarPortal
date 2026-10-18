@@ -7,3 +7,4 @@ backend/bootstrap-credentials.json
 data/
 backend/uploads/
 client/dist/
+*.log

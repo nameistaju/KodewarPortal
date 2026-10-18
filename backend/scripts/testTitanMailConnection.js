@@ -135,10 +135,15 @@ export const verifySmtpConnection = async (config, customTransporter = null) => 
 /**
  * Main execution routine for the CLI verification script.
  */
-export const runConnectionVerification = async (envObj = process.env) => {
+export const runConnectionVerification = async (envObj = process.env, options = {}) => {
+  const isImapOnly = Boolean(options.imapOnly || (typeof process !== 'undefined' && process.argv?.includes('--imap-only')));
+
   console.log('\n============================================================');
   console.log('  KODEWAR HR — TITAN MAILBOX CONNECTION VERIFICATION');
   console.log('  Target Mailbox: hr@kodewar.com');
+  if (isImapOnly) {
+    console.log('  Mode: READ-ONLY IMAP VERIFICATION (SMTP SKIPPED)');
+  }
   console.log('============================================================\n');
 
   console.log('[1/3] Validating Environment Configuration...');
@@ -157,7 +162,11 @@ export const runConnectionVerification = async (envObj = process.env) => {
   console.log('  - TITAN_MAIL_ENABLED:', config.enabled ? 'true' : 'false (verification running in on-demand mode)');
   console.log('  - TITAN_MAILBOX_ADDRESS:', config.mailboxAddress);
   console.log(`  - IMAP Host/Port: ${config.imap.host}:${config.imap.port} (TLS: ${config.imap.secure})`);
-  console.log(`  - SMTP Host/Port: ${config.smtp.host}:${config.smtp.port} (TLS: ${config.smtp.secure})`);
+  if (!isImapOnly) {
+    console.log(`  - SMTP Host/Port: ${config.smtp.host}:${config.smtp.port} (TLS: ${config.smtp.secure})`);
+  } else {
+    console.log('  - SMTP Host/Port: [SKIPPED FOR READ-ONLY STAGE]');
+  }
   console.log('  - Passwords: [CONFIGURED - NEVER LOGGED OR EXPOSED]');
   console.log('✔ Configuration format: PASS\n');
 
@@ -180,16 +189,21 @@ export const runConnectionVerification = async (envObj = process.env) => {
   }
 
   // Verify SMTP
-  console.log('[3/3] Verifying SMTP Connectivity & Authentication (No email sent)...');
-  const smtpResult = await verifySmtpConnection(config);
-
-  if (!smtpResult.ok) {
-    console.error('❌ SMTP Verification: FAIL');
-    console.error(`   Reason: ${smtpResult.error}\n`);
+  let smtpResult = { ok: true, skipped: true };
+  if (isImapOnly) {
+    console.log('[3/3] SMTP Verification: SKIPPED (--imap-only mode active)\n');
   } else {
-    console.log('✔ SMTP Verification: PASS');
-    console.log('  - Handshake & AUTH: Verified via nodemailer.verify()');
-    console.log('  - Test email sent: NO (Strict zero-dispatch policy)\n');
+    console.log('[3/3] Verifying SMTP Connectivity & Authentication (No email sent)...');
+    smtpResult = await verifySmtpConnection(config);
+
+    if (!smtpResult.ok) {
+      console.error('❌ SMTP Verification: FAIL');
+      console.error(`   Reason: ${smtpResult.error}\n`);
+    } else {
+      console.log('✔ SMTP Verification: PASS');
+      console.log('  - Handshake & AUTH: Verified via nodemailer.verify()');
+      console.log('  - Test email sent: NO (Strict zero-dispatch policy)\n');
+    }
   }
 
   // Summary
@@ -198,15 +212,15 @@ export const runConnectionVerification = async (envObj = process.env) => {
   console.log('============================================================');
   console.log(`  Configuration Format : PASS`);
   console.log(`  IMAP Connectivity    : ${imapResult.ok ? 'PASS' : 'FAIL'}`);
-  console.log(`  SMTP Connectivity    : ${smtpResult.ok ? 'PASS' : 'FAIL'}`);
+  console.log(`  SMTP Connectivity    : ${smtpResult.skipped ? 'SKIPPED (Read-Only Mode)' : (smtpResult.ok ? 'PASS' : 'FAIL')}`);
 
   const allPassed = imapResult.ok && smtpResult.ok;
   if (allPassed) {
     console.log('\n🎉 ALL CHECKS PASSED. Mailbox is reachable and authenticated safely.\n');
-    return { success: true, exitCode: 0 };
+    return { success: true, exitCode: 0, imapResult, smtpResult };
   } else {
     console.log('\n⚠️ ONE OR MORE CHECKS FAILED. Please review the sanitized error logs above.\n');
-    return { success: false, exitCode: 1 };
+    return { success: false, exitCode: 1, imapResult, smtpResult };
   }
 };
 

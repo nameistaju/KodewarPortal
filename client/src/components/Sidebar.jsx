@@ -5,7 +5,7 @@ import {
   UsersRoundIcon, MessageSquareIcon,
   ChevronRightIcon, ChevronLeftIcon, 
   FileTextIcon, LayoutGridIcon, Loader2, LogOutIcon, 
-  MenuIcon, SettingsIcon, UserIcon, XIcon
+  MenuIcon, SettingsIcon, UserIcon, XIcon, BriefcaseIcon
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { employeeName } from '../api/helpers'
@@ -53,7 +53,7 @@ const Sidebar = () => {
     ]
 
     const hrNavigation = [
-        {name: "Recruitment", href: "/hr", icon: LayoutGridIcon},
+        {name: "HR Workspace", href: "/hr", icon: BriefcaseIcon},
         {name: "Chat", href: "/chat", icon: MessageSquareIcon},
         {name: "Announcements", href: "/announcements", icon: BellIcon},
         {name: "Profile & Settings", href: "/settings", icon: SettingsIcon},
@@ -61,6 +61,7 @@ const Sidebar = () => {
 
     const adminNavigation = [
         {name: "Dashboard", href: "/dashboard", icon: LayoutGridIcon},
+        {name: "HR Workspace", href: "/hr", icon: BriefcaseIcon},
         {name: "Chat", href: "/chat", icon: MessageSquareIcon},
         {name: "Attendance", href: "/admin-attendance", icon: CalendarIcon},
         {name: "Leave Requests", href: "/leave", icon: FileTextIcon},

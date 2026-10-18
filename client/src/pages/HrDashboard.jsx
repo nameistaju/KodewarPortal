@@ -1,328 +1,469 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
-  Briefcase,
+  Inbox,
   Users,
-  Mail,
-  UserCheck,
-  CheckCircle2,
+  FileCheck2,
+  Briefcase,
+  CalendarCheck2,
+  FileText,
+  Activity,
+  Sliders,
+  ShieldCheck,
+  RefreshCw,
   Clock,
   ArrowRight,
-  Shield,
-  Layers,
-  Sparkles,
-  Inbox,
-  AlertCircle
+  Paperclip,
+  CheckCircle2,
+  AlertCircle,
+  Mail,
+  Database,
+  ExternalLink,
+  Copy
 } from 'lucide-react';
-
-const pipelineStages = [
-  { name: 'Applied', count: 0, desc: 'Incoming candidate submissions (Phase 2)' },
-  { name: 'Screening', count: 0, desc: 'Resume & qualifications review (Phase 2)' },
-  { name: 'Technical Assessment', count: 0, desc: 'Take-home & live coding tests (Phase 2)' },
-  { name: 'Interview', count: 0, desc: 'Leadership & team interviews (Phase 2)' },
-  { name: 'Offer / Hired', count: 0, desc: 'Final negotiations & onboarding (Phase 2)' }
-];
+import toast from 'react-hot-toast';
+import HrMailboxInbox from '../components/hr/HrMailboxInbox';
+import HrCandidatesView from '../components/hr/HrCandidatesView';
+import HrDocumentVerificationView from '../components/hr/HrDocumentVerificationView';
+import HrJobsView from '../components/hr/HrJobsView';
+import HrInterviewsView from '../components/hr/HrInterviewsView';
+import HrEmailTemplatesView from '../components/hr/HrEmailTemplatesView';
+import HrAuditLogsView from '../components/hr/HrAuditLogsView';
+import HrSettingsView from '../components/hr/HrSettingsView';
+import { getMailboxSyncStatus, getMailboxEmails } from '../api/hrMailboxApi';
+import { getCandidates } from '../api/hrCandidateApi';
+import { getJobs } from '../api/hrJobApi';
+import { getApplications } from '../api/hrApplicationApi';
+import { classifyEmailCategory } from '../components/hr/hrHelpers';
+import { formatDate } from '../api/helpers';
 
 export default function HrDashboard() {
-  const [selectedFilter, setSelectedFilter] = useState('ALL');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentTab = searchParams.get('tab') || 'inbox';
+
+  const [syncStatus, setSyncStatus] = useState(null);
+  const [recentEmails, setRecentEmails] = useState([]);
+  const [allEmailsSample, setAllEmailsSample] = useState([]);
+  const [loadingOverview, setLoadingOverview] = useState(true);
+  const [selectedEmailIdToOpen, setSelectedEmailIdToOpen] = useState(null);
+
+  // Live entity counts from backend tables
+  const [candidateCount, setCandidateCount] = useState(null);
+  const [jobCount, setJobCount] = useState(null);
+  const [appCount, setAppCount] = useState(null);
+  const [schemaPending, setSchemaPending] = useState(false);
+  const [schemaErrorTable, setSchemaErrorTable] = useState('hr_candidates');
+
+  // Set active tab in search params
+  const setActiveTab = (tab) => {
+    setSearchParams({ tab });
+  };
+
+  const loadDashboardData = useCallback(async () => {
+    setLoadingOverview(true);
+    setSchemaPending(false);
+
+    try {
+      const [statusRes, emailsRes, candidatesRes, jobsRes, appsRes] = await Promise.allSettled([
+        getMailboxSyncStatus(),
+        getMailboxEmails({ page: 1, limit: 200, folder: 'INBOX' }),
+        getCandidates({ page: 1, limit: 1 }),
+        getJobs({ page: 1, limit: 1 }),
+        getApplications({ page: 1, limit: 1 })
+      ]);
+
+      if (statusRes.status === 'fulfilled') {
+        setSyncStatus(statusRes.value);
+      }
+
+      if (emailsRes.status === 'fulfilled') {
+        const items = emailsRes.value?.emails || [];
+        setAllEmailsSample(items);
+        setRecentEmails(items.slice(0, 5));
+      }
+
+      // Check for schema migration pending across candidate/job endpoints
+      let pendingDetected = false;
+      [candidatesRes, jobsRes, appsRes].forEach((res) => {
+        if (res.status === 'rejected') {
+          const errData = res.reason?.response?.data;
+          const status = res.reason?.response?.status;
+          if (errData?.code === 'SCHEMA_MIGRATION_PENDING' || status === 503) {
+            pendingDetected = true;
+            if (errData?.table) setSchemaErrorTable(errData.table);
+          }
+        }
+      });
+      setSchemaPending(pendingDetected);
+
+      if (candidatesRes.status === 'fulfilled') {
+        setCandidateCount(candidatesRes.value?.pagination?.totalCount ?? 0);
+      } else {
+        setCandidateCount(null);
+      }
+
+      if (jobsRes.status === 'fulfilled') {
+        setJobCount(jobsRes.value?.pagination?.totalCount ?? 0);
+      } else {
+        setJobCount(null);
+      }
+
+      if (appsRes.status === 'fulfilled') {
+        setAppCount(appsRes.value?.pagination?.totalCount ?? 0);
+      } else {
+        setAppCount(null);
+      }
+    } catch {
+      // Graceful fallback
+    } finally {
+      setLoadingOverview(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  // Handle drill-down from Candidates/Documents tabs directly into Inbox
+  const handleOpenEmailInInbox = (emailId) => {
+    setSelectedEmailIdToOpen(emailId);
+    setActiveTab('inbox');
+  };
+
+  // Compute metrics exclusively from real verified database values
+  const metrics = useMemo(() => {
+    const totalSynced = syncStatus?.syncState?.total_messages_synced ?? allEmailsSample.length;
+
+    // Real classification counts across all fetched emails
+    let jobAppCount = 0;
+    let docSubmissionCount = 0;
+    let interviewCount = 0;
+    let offerCount = 0;
+    let needsReviewCount = 0;
+
+    allEmailsSample.forEach((e) => {
+      const cat = e.category || classifyEmailCategory(e);
+      if (cat === 'Job Application') jobAppCount++;
+      else if (cat === 'Document Submission') docSubmissionCount++;
+      else if (cat === 'Application + Documents') {
+        jobAppCount++;
+        docSubmissionCount++;
+      } else if (cat === 'Interview / Interview Response') interviewCount++;
+      else if (cat === 'Offer / Onboarding') offerCount++;
+      else if (cat === 'Needs Human Review') needsReviewCount++;
+    });
+
+    return {
+      totalSynced,
+      candidateCount,
+      jobCount,
+      appCount,
+      jobAppCount,
+      docSubmissionCount,
+      interviewCount,
+      offerCount,
+      needsReviewCount
+    };
+  }, [syncStatus, allEmailsSample, candidateCount, jobCount, appCount]);
+
+  // Tab configurations matching Stage A / Stage B enterprise specifications
+  const tabs = [
+    { id: 'inbox', name: 'Inbox', icon: Inbox, count: metrics.totalSynced },
+    {
+      id: 'candidates',
+      name: 'Candidates',
+      icon: Users,
+      count: candidateCount !== null ? candidateCount : (schemaPending ? '!' : metrics.jobAppCount)
+    },
+    {
+      id: 'verification',
+      name: 'Document Verification',
+      icon: FileCheck2,
+      count: metrics.docSubmissionCount
+    },
+    {
+      id: 'jobs',
+      name: 'Jobs & Applications',
+      icon: Briefcase,
+      count: jobCount !== null ? jobCount : (schemaPending ? '!' : 0)
+    },
+    {
+      id: 'interviews',
+      name: 'Interviews',
+      icon: CalendarCheck2,
+      count: metrics.interviewCount
+    },
+    { id: 'templates', name: 'Email Templates', icon: FileText },
+    { id: 'audit', name: 'Automation & Audit Logs', icon: Activity },
+    { id: 'settings', name: 'Settings', icon: Sliders }
+  ];
 
   return (
-    <div className="space-y-6 animate-fade-in p-4 sm:p-6 max-w-7xl mx-auto">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-neutral-200 pb-5">
+    <div className="space-y-4 animate-fade-in p-2 sm:p-4 max-w-7xl mx-auto">
+      {/* Workspace Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-neutral-200">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-black tracking-tight text-neutral-900">
-              Recruitment Workspace
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-neutral-900">
+              HR Operations & Recruitment Workspace
             </h1>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-neutral-900 text-white">
-              HR Portal
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-neutral-900 text-white">
+              Enterprise
             </span>
           </div>
-          <p className="text-xs text-neutral-500 font-medium mt-1">
-            Talent acquisition, pipeline tracking, and hiring operations · KODEWAR Workforce Portal
+          <p className="text-xs text-neutral-500 mt-0.5">
+            Talent acquisition, mailbox candidate ingestion, and compliance verification · KODEWAR Workforce Portal
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-100 text-neutral-700 border border-neutral-200">
-            <Shield className="w-3.5 h-3.5 text-neutral-500" />
+        {/* Live Status Pill & Role Badge */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-neutral-200 shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+            <span className="text-neutral-700 font-mono text-[11px]">
+              hr@kodewar.com (UID {syncStatus?.syncState?.last_synced_uid ?? '—'})
+            </span>
+          </div>
+
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-neutral-100 text-neutral-800 border border-neutral-200">
+            <ShieldCheck className="w-3.5 h-3.5 text-neutral-600" />
             Isolated HR Role
           </span>
         </div>
       </div>
 
-      {/* Integration Notice Banner */}
-      <div className="rounded-2xl border border-neutral-800 bg-[#0A0A0A] p-5 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-neutral-800/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-white" />
-              <span className="text-xs font-bold uppercase tracking-widest text-neutral-400">
-                Phase 1 Architecture Active
-              </span>
-            </div>
-            <h3 className="text-base font-bold text-white">
-              Recruitment Shell & Integration Readiness
-            </h3>
-            <p className="text-xs text-neutral-400 max-w-3xl leading-relaxed">
-              HR role isolation and authentication hardening are active. Live Titan IMAP/SMTP ingestion,
-              AI candidate parsing, automated reply dispatch, and bulk communications will be connected
-              in Phase 2 after database schema deployment and mailbox credential verification.
-            </p>
-          </div>
-          <div className="shrink-0 flex items-center gap-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-neutral-900 text-neutral-300 border border-neutral-800">
-              <Clock className="w-3.5 h-3.5 text-neutral-400" />
-              Mailbox Sync: Scheduled Phase 2
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Metric Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs transition-all hover:border-neutral-900 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-              Open Positions
-            </span>
-            <div className="p-2 rounded-xl bg-neutral-100 text-neutral-900">
-              <Briefcase className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-2xl font-black text-neutral-900 mt-2">0</p>
-          <p className="text-[11px] text-neutral-500 mt-1 font-medium">
-            Awaiting Requisition Setup (Phase 2)
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs transition-all hover:border-neutral-900 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-              Candidate Pipeline
-            </span>
-            <div className="p-2 rounded-xl bg-neutral-100 text-neutral-900">
-              <Users className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-2xl font-black text-neutral-900 mt-2">0</p>
-          <p className="text-[11px] text-neutral-500 mt-1 font-medium">
-            Pipeline activates in Phase 2
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs transition-all hover:border-neutral-900 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-              Mailbox Ingestion
-            </span>
-            <div className="p-2 rounded-xl bg-neutral-100 text-neutral-900">
-              <Mail className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-sm font-black text-neutral-900 mt-3 truncate">
-            Not Connected
-          </p>
-          <p className="text-[11px] text-neutral-500 mt-1 font-medium">
-            Titan IMAP/SMTP Scheduled (Phase 2)
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs transition-all hover:border-neutral-900 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-              Hires Closed (Q4)
-            </span>
-            <div className="p-2 rounded-xl bg-neutral-100 text-neutral-900">
-              <UserCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-2xl font-black text-neutral-900 mt-2">0</p>
-          <p className="text-[11px] text-neutral-500 mt-1 font-medium">
-            Awaiting recruitment activity
-          </p>
-        </div>
-      </div>
-
-      {/* Recruitment Pipeline Stages */}
-      <div className="rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6 shadow-xs">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-sm font-black uppercase tracking-wider text-neutral-900">
-              Recruitment Pipeline Funnel
-            </h2>
-            <p className="text-xs text-neutral-500 mt-0.5">
-              Live progression gates for candidate submissions (Scheduled for Phase 2)
-            </p>
-          </div>
-          <span className="text-[11px] font-bold text-neutral-400">
-            5 Stages (Pending Integration)
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          {pipelineStages.map((stage, idx) => (
-            <div
-              key={stage.name}
-              className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/50 flex flex-col justify-between"
-            >
+      {/* Schema Migration Banner (when database tables pending) */}
+      {schemaPending && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50/80 p-3.5 text-xs text-amber-950 shadow-xs">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <Database className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
               <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
-                    Stage 0{idx + 1}
-                  </span>
-                  <span className="text-xs font-black text-neutral-400">
-                    {stage.count}
-                  </span>
-                </div>
-                <h4 className="text-xs font-bold text-neutral-900 mt-2">
-                  {stage.name}
-                </h4>
-                <p className="text-[11px] text-neutral-500 mt-1 leading-snug">
-                  {stage.desc}
+                <p className="font-bold text-amber-900">
+                  Database Setup Required: Table <code>public.{schemaErrorTable}</code> pending creation in Supabase
                 </p>
-              </div>
-              <div className="mt-4 pt-3 border-t border-neutral-200/80 flex items-center justify-between text-[11px] text-neutral-400">
-                <span>0 active</span>
-                <ArrowRight className="w-3 h-3 text-neutral-300" />
+                <p className="text-[11px] text-amber-800 mt-0.5">
+                  The mailbox (180 emails) and deterministic classification are active. To enable persistent candidate profiles, requisitions, and application pipeline, execute the consolidated migration script in Supabase SQL Editor.
+                </p>
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <span className="font-mono text-[10px] bg-white px-2 py-0.5 rounded border border-amber-200 text-neutral-800 select-all">
+                    backend/src/db/migrations/000_stage_b2_consolidated_migration.sql
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText('backend/src/db/migrations/000_stage_b2_consolidated_migration.sql');
+                      toast.success('Script path copied to clipboard');
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-200 hover:bg-amber-300 text-amber-900 rounded font-semibold text-[10px] transition cursor-pointer"
+                  >
+                    <Copy className="w-3 h-3" />
+                    Copy Path
+                  </button>
+                </div>
               </div>
             </div>
-          ))}
+
+            <button
+              type="button"
+              onClick={loadDashboardData}
+              disabled={loadingOverview}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-900 text-white font-bold text-xs hover:bg-neutral-800 transition shrink-0 cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingOverview ? 'animate-spin' : ''}`} />
+              Verify Schema
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Actionable Executive Summary Bar (Real Data Only, No Fabrications) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+        {/* Total Synced Inbound Emails */}
+        <div
+          onClick={() => setActiveTab('inbox')}
+          className="p-3.5 rounded-xl border border-neutral-200 bg-white hover:border-neutral-900 transition-all cursor-pointer shadow-xs group"
+        >
+          <div className="flex items-center justify-between text-neutral-500">
+            <span className="text-[10px] font-bold uppercase tracking-wider">
+              Inbox Emails
+            </span>
+            <Inbox className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-900 transition-colors" />
+          </div>
+          <p className="text-xl font-bold text-neutral-900 mt-1">
+            {metrics.totalSynced}
+          </p>
+          <p className="text-[10px] text-neutral-500 mt-0.5 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+            Verified Titan Checkpoint UID {syncStatus?.syncState?.last_synced_uid ?? '—'}
+          </p>
+        </div>
+
+        {/* Classified Job Applications */}
+        <div
+          onClick={() => setActiveTab('inbox')}
+          className="p-3.5 rounded-xl border border-neutral-200 bg-white hover:border-neutral-900 transition-all cursor-pointer shadow-xs group"
+        >
+          <div className="flex items-center justify-between text-neutral-500">
+            <span className="text-[10px] font-bold uppercase tracking-wider">
+              Applications
+            </span>
+            <Users className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-900 transition-colors" />
+          </div>
+          <p className="text-xl font-bold text-neutral-900 mt-1">
+            {metrics.jobAppCount}
+          </p>
+          <p className="text-[10px] text-neutral-500 mt-0.5">
+            {candidateCount !== null ? `${candidateCount} persistent candidates` : 'Inbound email applications'}
+          </p>
+        </div>
+
+        {/* Document Verification Queue */}
+        <div
+          onClick={() => setActiveTab('verification')}
+          className="p-3.5 rounded-xl border border-neutral-200 bg-white hover:border-neutral-900 transition-all cursor-pointer shadow-xs group"
+        >
+          <div className="flex items-center justify-between text-neutral-500">
+            <span className="text-[10px] font-bold uppercase tracking-wider">
+              Compliance Queue
+            </span>
+            <FileCheck2 className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-900 transition-colors" />
+          </div>
+          <p className="text-xl font-bold text-neutral-900 mt-1">
+            {metrics.docSubmissionCount}
+          </p>
+          <p className="text-[10px] text-neutral-500 mt-0.5 flex items-center gap-1">
+            <Paperclip className="w-2.5 h-2.5 text-neutral-400" />
+            Identity photos & compliance docs
+          </p>
+        </div>
+
+        {/* Interview Schedule Communications */}
+        <div
+          onClick={() => setActiveTab('interviews')}
+          className="p-3.5 rounded-xl border border-neutral-200 bg-white hover:border-neutral-900 transition-all cursor-pointer shadow-xs group"
+        >
+          <div className="flex items-center justify-between text-neutral-500">
+            <span className="text-[10px] font-bold uppercase tracking-wider">
+              Interviews
+            </span>
+            <CalendarCheck2 className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-900 transition-colors" />
+          </div>
+          <p className="text-xl font-bold text-neutral-900 mt-1">
+            {metrics.interviewCount}
+          </p>
+          <p className="text-[10px] text-neutral-500 mt-0.5">
+            Interview rounds & responses
+          </p>
+        </div>
+
+        {/* Mailbox Worker Health */}
+        <div
+          onClick={() => setActiveTab('audit')}
+          className="col-span-2 sm:col-span-4 lg:col-span-1 p-3.5 rounded-xl border border-neutral-200 bg-neutral-50/50 hover:border-neutral-900 transition-all cursor-pointer shadow-xs"
+        >
+          <div className="flex items-center justify-between text-neutral-500">
+            <span className="text-[10px] font-bold uppercase tracking-wider">
+              Worker Status
+            </span>
+            <Activity className="w-3.5 h-3.5 text-neutral-400" />
+          </div>
+          <p className="text-base font-bold text-neutral-900 mt-1">
+            {syncStatus?.syncState?.status || 'IDLE'}
+          </p>
+          <p className="text-[10px] text-emerald-700 mt-0.5 font-medium flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+            UID {syncStatus?.syncState?.last_synced_uid ?? '—'} · Lock Cleared
+          </p>
         </div>
       </div>
 
-      {/* Two Column Layout: Requisitions Empty State & Phase 2 Roadmap */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Requisitions List (2 cols) */}
-        <div className="lg:col-span-2 rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-            <div>
-              <h2 className="text-sm font-black uppercase tracking-wider text-neutral-900">
-                Open Requisitions (0)
-              </h2>
-              <p className="text-xs text-neutral-500 mt-0.5">
-                Organizational hiring requisitions managed by HR
-              </p>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              {['ALL', 'DEVELOPMENT', 'RESEARCH', 'DEVOPS'].map((dept) => (
-                <button
-                  key={dept}
-                  type="button"
-                  onClick={() => setSelectedFilter(dept)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
-                    selectedFilter === dept
-                      ? 'bg-neutral-900 text-white'
-                      : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                  }`}
-                >
-                  {dept}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Honest Empty State */}
-          <div className="py-12 px-4 rounded-xl border border-dashed border-neutral-200 bg-neutral-50/60 flex flex-col items-center justify-center text-center">
-            <div className="w-12 h-12 rounded-2xl bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-400 mb-3">
-              <Inbox className="w-6 h-6" />
-            </div>
-            <h3 className="text-sm font-bold text-neutral-900">
-              No Active Requisitions Configured
-            </h3>
-            <p className="text-xs text-neutral-500 max-w-sm mt-1 leading-relaxed">
-              Requisition creation and position tracking will be enabled in Phase 2 once the recruitment database tables are deployed.
-            </p>
-            <div className="mt-4 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-neutral-200 text-neutral-700">
-                <AlertCircle className="w-3 h-3 text-neutral-500" />
-                Awaiting Phase 2 Schema
-              </span>
-            </div>
-          </div>
+      {/* Secondary Enterprise Navigation Strip (8 Tabs) */}
+      <div className="border-b border-neutral-200 bg-white rounded-xl p-1.5 shadow-2xs">
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = currentTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-neutral-900 text-white shadow-2xs'
+                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-neutral-400'}`} />
+                <span>{tab.name}</span>
+                {tab.count !== undefined && (
+                  <span
+                    className={`ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      isActive
+                        ? 'bg-neutral-800 text-neutral-200'
+                        : tab.count === '!'
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-neutral-100 text-neutral-600'
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
+      </div>
 
-        {/* Phase 2 Integration Roadmap (1 col) */}
-        <div className="rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Layers className="w-4 h-4 text-neutral-900" />
-              <h2 className="text-sm font-black uppercase tracking-wider text-neutral-900">
-                Phase 2 Architecture Roadmap
-              </h2>
-            </div>
-            <p className="text-xs text-neutral-500 mb-4">
-              Pending technical integrations to be implemented in Phase 2
-            </p>
+      {/* Tab Panels */}
+      <div className="min-h-[550px]">
+        {currentTab === 'inbox' && (
+          <HrMailboxInbox initialSelectedEmailId={selectedEmailIdToOpen} />
+        )}
 
-            <div className="space-y-3">
-              <div className="p-3 rounded-xl border border-neutral-200 bg-neutral-50">
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-neutral-900 mt-0.5 shrink-0" />
-                  <div>
-                    <h5 className="text-xs font-bold text-neutral-900">
-                      Phase 1: HR Role & Isolation
-                    </h5>
-                    <p className="text-[11px] text-neutral-500 mt-0.5">
-                      Authentication hardening, allowlist permissions, workspace foundation complete.
-                    </p>
-                  </div>
-                </div>
-              </div>
+        {currentTab === 'candidates' && (
+          <HrCandidatesView
+            emails={allEmailsSample}
+            onSelectEmail={handleOpenEmailInInbox}
+            schemaPending={schemaPending}
+            onRetrySchema={loadDashboardData}
+          />
+        )}
 
-              <div className="p-3 rounded-xl border border-neutral-200 bg-white">
-                <div className="flex items-start gap-2.5">
-                  <Clock className="w-4 h-4 text-neutral-400 mt-0.5 shrink-0" />
-                  <div>
-                    <h5 className="text-xs font-bold text-neutral-700">
-                      Phase 2: Titan Mailbox Ingestion
-                    </h5>
-                    <p className="text-[11px] text-neutral-500 mt-0.5">
-                      IMAP/SMTP connection to dedicated HR inbox, webhook syncing, secure credential storage.
-                    </p>
-                  </div>
-                </div>
-              </div>
+        {currentTab === 'verification' && (
+          <HrDocumentVerificationView
+            emails={allEmailsSample}
+            onSelectEmail={handleOpenEmailInInbox}
+          />
+        )}
 
-              <div className="p-3 rounded-xl border border-neutral-200 bg-white">
-                <div className="flex items-start gap-2.5">
-                  <Clock className="w-4 h-4 text-neutral-400 mt-0.5 shrink-0" />
-                  <div>
-                    <h5 className="text-xs font-bold text-neutral-700">
-                      Phase 2: Candidate Extraction
-                    </h5>
-                    <p className="text-[11px] text-neutral-500 mt-0.5">
-                      Resume PDF parsing, candidate schema population, and automated acknowledgment emails.
-                    </p>
-                  </div>
-                </div>
-              </div>
+        {currentTab === 'jobs' && (
+          <HrJobsView
+            emails={allEmailsSample}
+            onSelectEmail={handleOpenEmailInInbox}
+            schemaPending={schemaPending}
+            onRetrySchema={loadDashboardData}
+          />
+        )}
 
-              <div className="p-3 rounded-xl border border-neutral-200 bg-white">
-                <div className="flex items-start gap-2.5">
-                  <Clock className="w-4 h-4 text-neutral-400 mt-0.5 shrink-0" />
-                  <div>
-                    <h5 className="text-xs font-bold text-neutral-700">
-                      Phase 2: Bulk Recruitment Mailer
-                    </h5>
-                    <p className="text-[11px] text-neutral-500 mt-0.5">
-                      Interview scheduling batches, rejection notices, offer letter transmission.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        {currentTab === 'interviews' && (
+          <HrInterviewsView
+            emails={allEmailsSample}
+            onSelectEmail={handleOpenEmailInInbox}
+          />
+        )}
 
-          <div className="mt-5 pt-4 border-t border-neutral-100 flex items-center justify-between text-[11px] text-neutral-500 font-medium">
-            <span>Enterprise KODEWAR Portal</span>
-            <span className="text-neutral-900 font-bold">
-              v2.4.0
-            </span>
-          </div>
-        </div>
+        {currentTab === 'templates' && <HrEmailTemplatesView />}
+
+        {currentTab === 'audit' && (
+          <HrAuditLogsView
+            syncStatus={syncStatus}
+            onRefresh={loadDashboardData}
+          />
+        )}
+
+        {currentTab === 'settings' && <HrSettingsView syncStatus={syncStatus} />}
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import logger from './utils/logger.js';
 import { ensureUploadDirectories } from './services/uploadService.js';
 import { startAutoCloseScheduler, stopAutoCloseScheduler } from './services/attendanceAutoCloseService.js';
 import { startChatCleanupScheduler, stopChatCleanupScheduler } from './services/chatCleanupScheduler.js';
+import { startMailboxSyncScheduler, stopMailboxSyncScheduler } from './services/hrMailboxScheduler.js';
 
 const PORT = env.port;
 let server;
@@ -17,6 +18,7 @@ const startServer = async () => {
   await runDevelopmentBootstrap();
   startAutoCloseScheduler();
   startChatCleanupScheduler();
+  startMailboxSyncScheduler();
 
   server = app.listen(PORT, () => {
     logger.info('KODEWAR API started', {
@@ -30,6 +32,7 @@ const shutdown = async (signal) => {
   logger.info('Shutdown signal received', { signal });
   stopAutoCloseScheduler();
   stopChatCleanupScheduler();
+  stopMailboxSyncScheduler();
 
   if (server) {
     server.close(async () => {

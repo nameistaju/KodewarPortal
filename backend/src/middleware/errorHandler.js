@@ -10,6 +10,25 @@ const formatValidationError = (error) => ({
 });
 
 const normalizeError = (error) => {
+  const msg = error.message || '';
+  if (
+    error.code === 'PGRST205' ||
+    msg.includes('schema cache') ||
+    msg.includes('relation "public.hr_') ||
+    msg.includes('Could not find the table')
+  ) {
+    const tableMatch = msg.match(/(?:table 'public\.|relation "public\.)([a-zA-Z0-9_]+)/i) || msg.match(/public\.([a-zA-Z0-9_]+)/i);
+    const tableName = tableMatch ? tableMatch[1] : 'required tables';
+    const appErr = new AppError(
+      `Database setup required: Table 'public.${tableName}' was not found in the Supabase schema cache. Please execute the consolidated migration script in Supabase SQL Editor.`,
+      503
+    );
+    appErr.code = 'SCHEMA_MIGRATION_PENDING';
+    appErr.table = tableName;
+    appErr.migrationFile = 'backend/src/db/migrations/000_stage_b2_consolidated_migration.sql';
+    return appErr;
+  }
+
   if (error.message === 'Not allowed by CORS') {
     return new AppError('Origin is not allowed by CORS policy', 403);
   }
@@ -58,6 +77,18 @@ export const errorHandler = (error, _req, res, _next) => {
         ? normalizedError.message
         : 'Something went wrong'
   };
+
+  if (normalizedError.code) {
+    response.code = normalizedError.code;
+  }
+
+  if (normalizedError.table) {
+    response.table = normalizedError.table;
+  }
+
+  if (normalizedError.migrationFile) {
+    response.migrationFile = normalizedError.migrationFile;
+  }
 
   if (normalizedError.details) {
     response.details = normalizedError.details;

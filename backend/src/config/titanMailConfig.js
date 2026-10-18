@@ -28,7 +28,14 @@ export const titanMailConfigSchema = z.object({
     secure: z.preprocess(boolPreprocess, z.boolean().default(true)),
     user: z.string().trim().min(1, 'TITAN_SMTP_USER is required'),
     password: z.string().min(1, 'TITAN_SMTP_PASSWORD is required')
-  })
+  }),
+  sync: z.object({
+    enabled: z.preprocess(boolPreprocess, z.boolean().default(false)),
+    intervalMinutes: z.preprocess((v) => (v === undefined || v === null || v === '' ? 10 : Number(v)), z.number().int().min(1).max(1440).default(10)),
+    batchLimit: z.preprocess((v) => (v === undefined || v === null || v === '' ? 50 : Number(v)), z.number().int().min(1).max(500).default(50)),
+    maxRetries: z.preprocess((v) => (v === undefined || v === null || v === '' ? 3 : Number(v)), z.number().int().min(0).max(10).default(3)),
+    retryDelayMs: z.preprocess((v) => (v === undefined || v === null || v === '' ? 1000 : Number(v)), z.number().int().min(100).max(60000).default(1000))
+  }).default({})
 });
 
 /**
@@ -53,6 +60,13 @@ export const getTitanMailConfig = (envObj = process.env) => {
       secure: envObj.TITAN_SMTP_SECURE ?? true,
       user: envObj.TITAN_SMTP_USER || '',
       password: envObj.TITAN_SMTP_PASSWORD || ''
+    },
+    sync: {
+      enabled: envObj.TITAN_MAIL_SYNC_ENABLED ?? false,
+      intervalMinutes: envObj.TITAN_MAIL_SYNC_INTERVAL_MINUTES,
+      batchLimit: envObj.TITAN_MAIL_SYNC_BATCH_LIMIT,
+      maxRetries: envObj.TITAN_MAIL_SYNC_MAX_RETRIES,
+      retryDelayMs: envObj.TITAN_MAIL_SYNC_RETRY_DELAY_MS
     }
   };
 

@@ -22,4 +22,5 @@ const logger = {
   error: (message, meta) => writeLog('error', message, meta)
 };
 
+export { logger };
 export default logger;

@@ -13,18 +13,34 @@ createRoot(document.getElementById('root')).render(
 )
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(err => {
-      console.error('Service Worker registration failed:', err);
+  if (import.meta.env.DEV) {
+    // In development mode, automatically unregister any stale service workers and purge caches
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const reg of registrations) {
+        reg.unregister();
+      }
     });
-  });
-
-  // Auto-reload the page when a new service worker takes control
-  let refreshing = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!refreshing) {
-      refreshing = true;
-      window.location.reload();
+    if ('caches' in window) {
+      caches.keys().then((keys) => {
+        for (const key of keys) caches.delete(key);
+      });
     }
-  });
+  } else {
+    // In production mode, register worker and check for updates
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').then((registration) => {
+        registration.update();
+      }).catch((err) => {
+        console.error('Service Worker registration failed:', err);
+      });
+    });
+
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
+  }
 }
